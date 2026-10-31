@@ -63,6 +63,37 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .cup input::placeholder{color:#cbbfae;font-weight:600}
 .nocups{color:var(--muted);font-size:.9rem;margin:0}
 
+/* Australian cash */
+.handed{display:flex;flex-direction:column;gap:6px}
+.handed .lbl{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+.handed .lbl b{color:var(--ink);font-family:var(--f-num);letter-spacing:0}
+.cash-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.bill{position:relative;display:inline-flex;align-items:center;justify-content:flex-end;width:96px;height:48px;border-radius:5px;padding:0 9px;font-family:var(--f-btn);font-size:1.35rem;font-weight:700;color:#fff;box-shadow:0 2px 0 rgba(0,0,0,.35);overflow:hidden;flex:none;vertical-align:middle}
+.bill i{position:absolute;left:9px;top:9px;width:17px;height:28px;border-radius:9px;background:rgba(255,255,255,.55)}
+.bill::after{content:"";position:absolute;inset:4px;border:1px solid rgba(255,255,255,.35);border-radius:3px}
+.b5{background:linear-gradient(135deg,#d07fbd,#8e4f9c)}
+.b10{background:linear-gradient(135deg,#4a9ade,#2a5ea8)}
+.b20{background:linear-gradient(135deg,#e45a44,#b2352a)}
+.b50{background:linear-gradient(135deg,#f2c940,#c99620);color:#3a2800}
+.b100{background:linear-gradient(135deg,#46b672,#23804a)}
+.coin{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;font-family:var(--f-btn);font-weight:700;color:#2b2f35;flex:none;vertical-align:middle;box-shadow:inset 0 0 0 2px rgba(255,255,255,.55),inset 0 -3px 0 rgba(0,0,0,.18),0 2px 0 rgba(0,0,0,.35)}
+.c5,.c10,.c20,.c50{background:radial-gradient(circle at 35% 30%,#f6f8fa,#a9b2bd)}
+.c100,.c200{background:radial-gradient(circle at 35% 30%,#fbe58e,#c58f22);color:#3a2800}
+.c5{width:28px;height:28px;font-size:.72rem}
+.c10{width:33px;height:33px;font-size:.8rem}
+.c20{width:41px;height:41px;font-size:.9rem}
+.c50{width:44px;height:44px;font-size:.95rem;border-radius:0;clip-path:polygon(98.3% 62.9%,85.4% 85.4%,62.9% 98.3%,37.1% 98.3%,14.6% 85.4%,1.7% 62.9%,1.7% 37.1%,14.6% 14.6%,37.1% 1.7%,62.9% 1.7%,85.4% 14.6%,98.3% 37.1%)}
+.c100{width:37px;height:37px;font-size:.9rem}
+.c200{width:31px;height:31px;font-size:.8rem}
+.drawer{display:flex;flex-wrap:wrap;gap:6px;align-items:center;background:#0f1622;border-radius:10px;padding:8px}
+.dbtn{background:transparent;border:0;padding:3px;border-radius:8px;line-height:0}
+.dbtn:active{transform:scale(.93)}
+.tray{min-height:62px;border:2px dashed var(--frame-2);border-radius:10px;padding:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.tray .empty{color:var(--muted);font-size:.9rem}
+.traytot{font-family:var(--f-num);font-size:1.1rem;margin-right:auto;align-self:center}
+.traytot b{color:var(--cash)}
+.res .hint .bill,.res .hint .coin{transform:scale(.8);margin:-4px -6px}
+
 /* till */
 .screen{background:var(--bezel);border-radius:18px;padding:10px}
 .till{background:var(--frame);border-radius:6px;display:grid;gap:6px;padding:6px;
@@ -196,6 +227,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
         <span class="paychip" id="paychip"></span>
         <button class="ghost" id="btn-repeat" hidden>Say that again?</button>
       </div>
+      <div class="handed" id="handed" hidden></div>
     </div>
     <div class="cups">
       <h2>Write the cups <span>· one per hot drink, in the order they said it</span></h2>
@@ -426,15 +458,32 @@ function makeOrder(level){
   const joined = list.length > 1 ? list.slice(0,-1).join(', ') + ' and ' + list[list.length-1] : list[0];
   const close = rnd([', please.',', thanks.','. Takeaway, thanks.',', cheers.']);
   const cash = chance(.45);
-  let tender = null, tenderSay = '';
+  let tender = null, tenderSay = '', pieces = null;
   if(cash){
     const notes = [5,10,20,50,100].filter(n => n >= total);
+    const cents = Math.round((total - Math.floor(total))*100)/100;
     const r = Math.random();
-    if(r < .15){ tender = total; tenderSay = 'exact money, ' + money(total); }
-    else if(r < .3 && Math.ceil(total) !== total && Math.ceil(total) < notes[0]){ tender = Math.ceil(total); tenderSay = money(tender) + ' in coins and notes'; }
-    else { tender = (r > .85 && notes[1]) ? notes[1] : notes[0]; tenderSay = 'a $' + tender + ' note'; }
+    if(r < .15) pieces = breakdown(total);
+    else if(r < .35 && cents > 0){ const n = [5,10,20,50,100].find(n => n > Math.floor(total)); pieces = [n, ...breakdown(cents)]; }
+    else if(r < .48 && cents > 0 && Math.ceil(total) < notes[0]) pieces = breakdown(Math.ceil(total));
+    else if(r < .58 && total < 20 && total > 10) pieces = [10, 10];
+    else pieces = [(r > .88 && notes[1]) ? notes[1] : notes[0]];
+    tender = Math.round(pieces.reduce((s,p)=>s+p,0)*100)/100;
+    tenderSay = sayPieces(pieces);
   }
-  return {items, total, text: open + joined + close, cash, tender, tenderSay};
+  return {items, total, text: open + joined + close, cash, tender, tenderSay, pieces};
+}
+/* Australian notes and coins */
+const DENOMS = [100,50,20,10,5,2,1,.5,.2,.1,.05];
+function breakdown(amt){ let c = Math.round(amt*100); const out = [];
+  for(const d of DENOMS){ const dc = Math.round(d*100); while(c >= dc){ out.push(d); c -= dc; } } return out; }
+const dLabel = d => d >= 1 ? '$' + d : Math.round(d*100) + 'c';
+function pieceHTML(d){ return d >= 5 ? `<span class="bill b${d}"><i></i><b>$${d}</b></span>` : `<span class="coin c${Math.round(d*100)}"><b>${dLabel(d)}</b></span>`; }
+function sayPieces(p){
+  const counts = new Map(); p.forEach(d => counts.set(d, (counts.get(d)||0)+1));
+  const words = ['','a','two','three','four','five','six','seven','eight'];
+  const parts = [...counts].map(([d,n]) => `${words[n]||n} ${dLabel(d)} ${d>=5?'note':'coin'}${n>1?'s':''}`);
+  return parts.length > 1 ? parts.slice(0,-1).join(', ') + ' and ' + parts[parts.length-1] : parts[0];
 }
 const PRICE_EX = {}; EXTRAS.forEach(([n,p]) => { if(n) PRICE_EX[canon(n)] = p; });
 
@@ -508,8 +557,11 @@ function newCustomer(){
   $('#cust-no').textContent = 'Customer ' + S.no;
   const say = $('#say'); say.textContent = '“' + S.order.text + '”'; say.classList.remove('hidden');
   const chip = $('#paychip');
-  if(S.order.cash){ chip.className = 'paychip cash'; chip.textContent = 'CASH · hands you ' + S.order.tenderSay; }
-  else { chip.className = 'paychip card'; chip.textContent = rnd(['CARD · taps their card','CARD · “Card, thanks”','CARD · holds up their phone']); }
+  const handed = $('#handed');
+  if(S.order.cash){ chip.className = 'paychip cash'; chip.textContent = 'CASH';
+    handed.hidden = false;
+    handed.innerHTML = `<span class="lbl">They hand you <b>${money(S.order.tender)}</b></span><div class="cash-row" aria-label="${esc(S.order.tenderSay)}">${S.order.pieces.map(pieceHTML).join('')}</div>`; }
+  else { chip.className = 'paychip card'; chip.textContent = rnd(['CARD · taps their card','CARD · “Card, thanks”','CARD · holds up their phone']); handed.hidden = true; handed.innerHTML = ''; }
   const cups = []; S.order.items.forEach(it => { if(it.kind === 'coffee') for(let q=0;q<it.qty;q++) cups.push(it); });
   $('#cups').innerHTML = cups.length ? cups.map((c,i) => `<div class="cup"><div class="lid"></div><div class="body"><span class="num">${c.large?'LARGE':'REG'} · CUP ${i+1}</span><input id="cup-${i}" aria-label="Cup ${i+1}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="write here"></div></div>`).join('')
     : '<p class="nocups">No hot coffees in this order.</p>';
@@ -548,10 +600,22 @@ function pay(method, tendered){
 function askChange(result){
   openModal(`<h2>Count the change</h2>
    <div class="sum"><span>Total</span><b>${money(result.total)}</b><span>Tendered</span><b>${money(result.tendered)}</b></div>
-   <p>How much change do you hand back?</p>
-   <form class="chg" id="chg-form"><span>$</span><input id="chg-in" inputmode="decimal" autocomplete="off" placeholder="0.00"><button class="big" type="submit">Hand it over</button></form>`);
-  const inp = $('#chg-in'); setTimeout(()=>inp.focus(), 50);
-  $('#chg-form').addEventListener('submit', e => { e.preventDefault(); const v = parseFloat(inp.value.replace(/[^0-9.]/g,'')); result.changeAnswer = isNaN(v) ? 0 : v; grade(result); });
+   <p>Tap notes and coins from the drawer to hand back the change. Tap one in your hand to put it back.</p>
+   <div class="drawer">${DENOMS.map(d => `<button class="dbtn" data-d="${d}" aria-label="Add ${dLabel(d)}">${pieceHTML(d)}</button>`).join('')}</div>
+   <div class="tray" id="tray"></div>
+   <form class="row" id="chg-form"><span class="traytot">Handing back <b id="traytot">$0.00</b></span><button class="big alt" type="button" id="tray-clear">Clear</button><button class="big" type="submit">Hand it over</button></form>`);
+  const hand = [];
+  const draw = () => {
+    const sum = Math.round(hand.reduce((s,d)=>s+d,0)*100)/100;
+    $('#traytot').textContent = money(sum);
+    $('#tray').innerHTML = hand.length ? hand.map((d,i) => `<button type="button" class="dbtn" data-i="${i}" aria-label="Remove ${dLabel(d)}">${pieceHTML(d)}</button>`).join('') : '<span class="empty">Your hand is empty. If no change is due, just tap Hand it over.</span>';
+    return sum;
+  };
+  draw();
+  $('#sheet').querySelectorAll('.drawer .dbtn').forEach(b => b.addEventListener('click', () => { hand.push(+b.dataset.d); hand.sort((a,b)=>b-a); draw(); }));
+  $('#tray').addEventListener('click', e => { const b = e.target.closest('[data-i]'); if(!b) return; hand.splice(+b.dataset.i,1); draw(); });
+  $('#tray-clear').addEventListener('click', () => { hand.length = 0; draw(); });
+  $('#chg-form').addEventListener('submit', e => { e.preventDefault(); result.changeAnswer = draw(); result.changePieces = hand.slice(); grade(result); });
 }
 
 /* ---------- grading ---------- */
@@ -606,9 +670,11 @@ function grade(r){
     const tOk = Math.abs(r.tendered - o.tender) < .005;
     payRes.push({ok:tOk, t:'Tendered ' + money(r.tendered), h: tOk ? '' : 'They gave you ' + money(o.tender) + ' (type the amount, then CASH, or tap the note)'});
     const due = Math.round((r.tendered - r.total)*100)/100;
+    const best = due > 0 ? breakdown(due).map(pieceHTML).join(' ') : 'nothing';
     if(r.changeAnswer != null){ const cOk = Math.abs(r.changeAnswer - due) < .005;
-      payRes.push({ok:cOk, t:'Change ' + money(r.changeAnswer), h: cOk ? '' : 'Till says ' + money(due) + ' (' + money(r.tendered) + ' − ' + money(r.total) + ')'}); }
-    else payRes.push({ok:true, t:'Change ' + money(due)});
+      const yours = r.changePieces && r.changePieces.length ? ' ' + r.changePieces.map(pieceHTML).join(' ') : '';
+      payRes.push({ok:cOk, raw:true, t:'Change ' + money(r.changeAnswer) + yours, h: cOk ? '' : 'Should be ' + money(due) + ' (' + money(r.tendered) + ' − ' + money(r.total) + '): ' + best}); }
+    else payRes.push({ok:true, raw:true, t:'Change ' + money(due), h:'Hand back: ' + best});
   }
   const totOk = Math.abs(r.total - o.total) < .005;
   const all = [...tillRes, ...cupRes, ...payRes];
