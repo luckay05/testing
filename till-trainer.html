@@ -1,0 +1,700 @@
+<title>Till Trainer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=Caveat:wght@600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: a counter strip (customer + cups) above a till that copies the shop's AUPOS screen: docket + keypad left, item grid + tabs right */
+:root{
+  --room:#141a22; --bezel:#0b0e13; --frame:#1f2a38; --frame-2:#2b3a4d;
+  --paper:#eef1f5; --paper-ink:#121820; --paper-line:#c9d3df; --sel:#efb07a;
+  --ink:#e9eef4; --muted:#93a2b5; --key:#e5731c; --key-dark:#b85a12;
+  --go:#56d434; --cash:#f2e417; --gold:#f3c63d; --bad:#ff6b5e; --good:#5fe08a;
+  --cup:#f7f3ea; --cup-ink:#2a1b10; --marker:#4a2410;
+  --f-btn:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"Barlow",system-ui,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --f-hand:"Caveat","Comic Sans MS",cursive;
+  color-scheme:dark;
+}
+html,body{background:var(--room);color:var(--ink)}
+body{font-family:var(--f-body);padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));padding-block:12px 40px}
+@media (min-width:500px){body{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.wrap{max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.brand{font-family:var(--f-btn);font-weight:700;font-size:1.5rem;letter-spacing:.02em;margin:0;margin-right:auto}
+.brand small{font-weight:500;color:var(--muted);font-size:.95rem;margin-left:6px}
+.stats{display:flex;gap:12px;font-family:var(--f-num);font-size:.8rem;color:var(--muted)}
+.stats b{color:var(--ink);font-weight:600}
+.pill{border:1px solid var(--frame-2);background:var(--frame);border-radius:999px;padding:6px 12px;font-size:.85rem;font-weight:600}
+.pill[aria-pressed="true"]{background:var(--gold);color:#1a1300;border-color:var(--gold)}
+.seg{display:inline-flex;border:1px solid var(--frame-2);border-radius:999px;overflow:hidden}
+.seg button{background:var(--frame);border:0;padding:6px 11px;font-size:.82rem;font-weight:600}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--room)}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+
+/* counter */
+.counter{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:12px}
+@media (max-width:820px){.counter{grid-template-columns:1fr}}
+.customer{background:var(--frame);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.cust-head{display:flex;align-items:center;gap:10px;font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+.cust-head .timer{margin-left:auto;font-family:var(--f-num);color:var(--ink);letter-spacing:0}
+.say{font-size:1.15rem;line-height:1.45;margin:0;transition:filter .3s}
+.say.hidden{filter:blur(7px);user-select:none}
+.cust-foot{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.paychip{font-family:var(--f-btn);font-weight:700;font-size:1.05rem;padding:4px 12px;border-radius:6px;letter-spacing:.03em}
+.paychip.card{background:#2f6fe0;color:#fff}
+.paychip.cash{background:var(--cash);color:#1a1600}
+.ghost{background:transparent;border:1px solid var(--frame-2);border-radius:8px;padding:5px 10px;font-size:.85rem;color:var(--muted)}
+.cups{background:var(--frame);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.cups h2{margin:0;font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.cups h2 span{text-transform:none;letter-spacing:0;font-weight:400}
+.cuprow{display:flex;flex-wrap:wrap;gap:10px}
+.cup{position:relative;width:132px;display:flex;flex-direction:column;align-items:center}
+.cup .lid{width:100%;height:14px;background:#fff;border-radius:7px 7px 3px 3px;box-shadow:inset 0 -3px 0 #d8d2c6}
+.cup .body{width:88%;background:var(--cup);clip-path:polygon(0 0,100% 0,90% 100%,10% 100%);padding:10px 12px 18px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.cup .num{font-family:var(--f-num);font-size:.65rem;color:#8a7d6c}
+.cup input{width:100%;border:0;border-bottom:1.5px dashed #c9bba5;background:transparent;font-family:var(--f-hand);font-size:1.45rem;font-weight:700;color:var(--marker);text-align:center;padding:2px 0}
+.cup input::placeholder{color:#cbbfae;font-weight:600}
+.nocups{color:var(--muted);font-size:.9rem;margin:0}
+
+/* till */
+.screen{background:var(--bezel);border-radius:18px;padding:10px}
+.till{background:var(--frame);border-radius:6px;display:grid;gap:6px;padding:6px;
+  grid-template-columns:minmax(0,1fr) minmax(0,1.55fr) 92px;
+  grid-template-areas:"docket grid side" "keypad tabs side"}
+@media (max-width:900px){.till{grid-template-columns:minmax(0,1fr);grid-template-areas:"docket" "grid" "tabs" "side" "keypad"}}
+.docket{grid-area:docket;display:flex;flex-direction:column;gap:6px;min-width:0}
+.fields{display:grid;grid-template-columns:1.6fr 1fr .6fr;gap:4px;font-size:.68rem;color:#b9c6d6}
+.fields div{display:flex;flex-direction:column;gap:2px}
+.fields output{background:var(--paper);color:var(--paper-ink);font-family:var(--f-num);font-size:1rem;padding:4px 8px;border-radius:3px;min-height:30px;text-align:right}
+.fields .bc{text-align:left;color:#1d4fd0}
+.totals{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.totals div{background:#0f1622;border:1px solid var(--frame-2);padding:4px 8px;display:flex;justify-content:space-between;align-items:baseline;font-size:.7rem;color:#b9c6d6}
+.totals b{font-family:var(--f-num);color:var(--cash);font-size:1.25rem}
+.lines{background:var(--paper);color:var(--paper-ink);border-radius:3px;min-height:170px;max-height:300px;overflow-y:auto;font-size:.9rem}
+@media (max-width:900px){.lines{min-height:120px;max-height:210px}}
+.lines table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.lines th{font-weight:500;text-align:left;padding:4px 6px;border-bottom:1px solid var(--paper-line);position:sticky;top:0;background:var(--paper)}
+.lines td{padding:5px 6px;border-bottom:1px solid #e0e6ee}
+.lines .r{text-align:right;font-family:var(--f-num);font-size:.82rem}
+.lines tr.item{cursor:pointer}
+.lines tr.sel td{background:var(--sel)}
+.lines tr.mod td{color:#4a5a70;font-size:.82rem;padding-top:1px;padding-bottom:3px}
+.lines tr.mod.sel td{background:#f7d3b2}
+.lines .empty td{color:#8b99ab;text-align:center;padding:40px 6px;border:0}
+
+.grid{grid-area:grid;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:minmax(58px,auto);gap:3px;align-content:start;min-width:0}
+.grid.ex{grid-template-columns:repeat(3,minmax(0,1fr))}
+.b{border:1px solid rgba(0,0,0,.35);border-radius:2px;font-family:var(--f-btn);font-weight:600;font-size:1rem;line-height:1.05;padding:4px 3px;text-align:center;word-break:break-word;box-shadow:inset 0 -2px 0 rgba(0,0,0,.18);min-width:0}
+@media (max-width:480px){.b{font-size:.86rem}.grid{grid-auto-rows:minmax(52px,auto)}}
+.b:active{filter:brightness(.82);transform:translateY(1px)}
+.b.flash{animation:flash .25s}
+@keyframes flash{from{filter:brightness(1.5)}to{filter:none}}
+@media (prefers-reduced-motion:reduce){.b.flash{animation:none}.say{transition:none}}
+.b .p{display:block;font-family:var(--f-num);font-weight:500;font-size:.78rem;margin-top:3px;opacity:.85}
+.mod-btn{background:#e6b98a;color:#2b1a0a}
+.mod-btn.blue{background:#9db3ea;color:#101c3a}
+.mod-btn.on{outline:3px solid #fff;outline-offset:-3px;filter:brightness(1.1)}
+.exhead{grid-column:1/-1;font-size:.85rem;color:var(--ink);padding:2px 2px 4px;font-weight:600}
+.exbar{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-top:4px}
+.exbar .b{min-height:50px;font-size:1.1rem}
+
+.tabs{grid-area:tabs;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;align-content:start}
+.tabs .b{min-height:44px;font-size:.92rem;font-weight:700;letter-spacing:.02em}
+.tabs .b[aria-pressed="true"]{background:#f4f6f8!important;color:#20262e!important}
+
+.side{grid-area:side;display:flex;flex-direction:column;gap:3px}
+@media (max-width:900px){.side{flex-direction:row}.side .b{flex:1}}
+.side .b{min-height:52px;font-size:.92rem}
+.s-green{background:var(--go);color:#0d2a05}
+.s-lav{background:#7f8bc4;color:#0e1330}
+.s-teal{background:#6fd5dc;color:#0b2b2e}
+.s-tan{background:#d9a476;color:#2b1708}
+.side .extra{font-size:1.15rem;font-weight:700}
+
+.keypad{grid-area:keypad;display:grid;gap:3px;grid-template-columns:repeat(7,minmax(0,1fr));grid-auto-rows:minmax(52px,auto);
+  grid-template-areas:"pm k7 k8 k9 star t10 cash" "void k4 k5 k6 minus t20 cash" "ct k1 k2 k3 enter t50 other" "cm k0 dot cls enter t100 co"}
+.keypad .b{font-size:1.2rem}
+.k{background:var(--key);color:#1f0f02}
+.t{background:#e8b886;color:#2a1606;font-family:var(--f-num);font-size:1.05rem!important}
+.pm{grid-area:pm;display:grid;grid-template-columns:1fr 1fr;gap:3px}
+.pm .b{background:#5d63d6;color:#fff;font-size:.95rem}
+.void{grid-area:void;background:#c3546d;color:#fff}
+.ct{grid-area:ct;background:#6fc56a;color:#0d2a05;font-size:.9rem!important}
+.cm{grid-area:cm;background:#9ccfd6;color:#0b2b2e;font-size:.9rem!important}
+.enter{grid-area:enter;background:var(--go);color:#0d2a05}
+.cashk{grid-area:cash;background:var(--cash);color:#1a1600;font-weight:700}
+.other{grid-area:other;background:#d6b0ea;color:#25103a;font-size:.9rem!important}
+.co{grid-area:co;background:#eae36a;color:#2a2600;font-size:.9rem!important}
+
+/* toast + modals */
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#0b0e13;border:1px solid var(--frame-2);color:var(--ink);padding:10px 16px;border-radius:10px;font-weight:500;z-index:50;max-width:calc(100vw - 32px);text-align:center}
+.modal{position:fixed;inset:0;background:rgba(5,8,12,.72);display:flex;align-items:flex-start;justify-content:center;z-index:40;overflow-y:auto;padding:max(24px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) 24px max(12px,env(safe-area-inset-left,0px))}
+.sheet{background:var(--frame);border:1px solid var(--frame-2);border-radius:16px;padding:18px;width:100%;max-width:560px;display:flex;flex-direction:column;gap:12px}
+.sheet h2{margin:0;font-family:var(--f-btn);font-size:1.6rem;font-weight:700}
+.sheet p{margin:0;line-height:1.45}
+.sheet .row{display:flex;gap:8px;flex-wrap:wrap}
+.big{border:0;border-radius:10px;padding:12px 18px;font-weight:700;font-size:1rem;background:var(--go);color:#0d2a05}
+.big.alt{background:var(--frame-2);color:var(--ink)}
+.chg{display:flex;align-items:center;gap:8px;font-family:var(--f-num);font-size:1.4rem}
+.chg input{width:9ch;font:inherit;background:var(--paper);color:var(--paper-ink);border:0;border-radius:8px;padding:8px 10px}
+.sum{font-family:var(--f-num);font-size:.95rem;color:var(--muted);display:grid;grid-template-columns:auto auto;justify-content:start;gap:2px 16px}
+.sum b{color:var(--ink);font-weight:600}
+.res{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.res li{display:grid;grid-template-columns:22px minmax(0,1fr);gap:6px;line-height:1.4;font-size:.95rem}
+.res .ic{font-weight:700}
+.res .ok .ic{color:var(--good)}
+.res .no .ic{color:var(--bad)}
+.res .hint{color:var(--muted);font-size:.85rem;display:block}
+.res code,.cheat code{font-family:var(--f-hand);font-size:1.3rem;color:var(--gold);font-weight:700}
+.res h3{margin:6px 0 0;font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.score{font-family:var(--f-btn);font-size:2.2rem;font-weight:700;line-height:1}
+.score.perfect{color:var(--good)}
+.cheat table{width:100%;border-collapse:collapse;font-size:.95rem}
+.cheat td{padding:4px 6px;border-bottom:1px solid var(--frame-2);vertical-align:middle}
+.cheat td:last-child{text-align:right}
+.cheat .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:520px){.cheat .cols{grid-template-columns:1fr}}
+.cheat h3{margin:0 0 4px;font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.orderline{background:#0f1622;border-radius:10px;padding:10px 12px;font-family:var(--f-hand);font-size:1.5rem;color:var(--gold);text-align:center}
+.note{font-size:.85rem;color:var(--muted)}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1 class="brand">Till Trainer <small>coffee counter practice</small></h1>
+    <div class="stats" aria-live="polite">
+      <span>Served <b id="st-served">0</b></span>
+      <span>Perfect <b id="st-perfect">0</b></span>
+      <span>Streak <b id="st-streak">0</b></span>
+      <span>Best <b id="st-best">–</b></span>
+    </div>
+  </header>
+  <div class="controls">
+    <div class="seg" role="group" aria-label="How busy">
+      <button data-level="easy">1 coffee</button>
+      <button data-level="normal">Normal</button>
+      <button data-level="rush">Rush</button>
+    </div>
+    <button class="pill" id="opt-memory" aria-pressed="false">Hide order after 8s</button>
+    <button class="pill" id="opt-change" aria-pressed="true">I work out the change</button>
+    <button class="pill" id="btn-cheat">Cheat sheet</button>
+    <button class="pill" id="btn-skip">Skip customer</button>
+  </div>
+
+  <section class="counter">
+    <div class="customer">
+      <div class="cust-head"><span id="cust-no">Customer 1</span><span class="timer" id="timer">0:00</span></div>
+      <p class="say" id="say"></p>
+      <div class="cust-foot">
+        <span class="paychip" id="paychip"></span>
+        <button class="ghost" id="btn-repeat" hidden>Say that again?</button>
+      </div>
+    </div>
+    <div class="cups">
+      <h2>Write the cups <span>· one per hot drink, in the order they said it</span></h2>
+      <div class="cuprow" id="cups"></div>
+    </div>
+  </section>
+
+  <div class="screen">
+    <div class="till">
+      <div class="docket">
+        <div class="fields">
+          <div>Barcode/Tender/Disc<output class="bc" id="f-buf"></output></div>
+          <div>Unit Price<output id="f-price"></output></div>
+          <div>Qty<output id="f-qty"></output></div>
+        </div>
+        <div class="totals">
+          <div>Items <b id="f-items" style="color:var(--ink);font-size:1rem">0</b></div>
+          <div>Total <b id="f-total">$0.00</b></div>
+        </div>
+        <div class="lines"><table><thead><tr><th>Description</th><th class="r">Qty</th><th class="r">Price</th></tr></thead><tbody id="lines"></tbody></table></div>
+      </div>
+      <div class="grid" id="grid"></div>
+      <div class="tabs" id="tabs"></div>
+      <div class="side">
+        <button class="b s-green" data-act="dinein">Dine In</button>
+        <button class="b s-green" data-act="takeaway" style="outline:3px solid #fff;outline-offset:-3px">Take Away</button>
+        <button class="b s-lav" data-act="nope">History</button>
+        <button class="b s-teal" data-act="nope">Taste</button>
+        <button class="b s-teal extra" data-act="extra">Extra</button>
+        <button class="b s-tan" data-act="nope">Other Func</button>
+      </div>
+      <div class="keypad" id="keypad">
+        <div class="pm"><button class="b" data-act="plus">+1</button><button class="b" data-act="minus1">-1</button></div>
+        <button class="b k" style="grid-area:k7" data-key="7">7</button>
+        <button class="b k" style="grid-area:k8" data-key="8">8</button>
+        <button class="b k" style="grid-area:k9" data-key="9">9</button>
+        <button class="b k" style="grid-area:star" data-act="nope">*</button>
+        <button class="b t" style="grid-area:t10" data-note="10">$10</button>
+        <button class="b cashk" data-act="cash">CASH</button>
+        <button class="b void" data-act="void">Void</button>
+        <button class="b k" style="grid-area:k4" data-key="4">4</button>
+        <button class="b k" style="grid-area:k5" data-key="5">5</button>
+        <button class="b k" style="grid-area:k6" data-key="6">6</button>
+        <button class="b k" style="grid-area:minus" data-act="nope">–</button>
+        <button class="b t" style="grid-area:t20" data-note="20">$20</button>
+        <button class="b ct" data-act="nope">Change Table</button>
+        <button class="b k" style="grid-area:k1" data-key="1">1</button>
+        <button class="b k" style="grid-area:k2" data-key="2">2</button>
+        <button class="b k" style="grid-area:k3" data-key="3">3</button>
+        <button class="b enter" data-act="enter">Enter</button>
+        <button class="b t" style="grid-area:t50" data-note="50">$50</button>
+        <button class="b other" data-act="other">Other Types</button>
+        <button class="b cm" data-act="nope">Comment</button>
+        <button class="b k" style="grid-area:k0" data-key="0">0</button>
+        <button class="b k" style="grid-area:dot" data-key=".">.</button>
+        <button class="b k" style="grid-area:cls" data-act="cls">Cls</button>
+        <button class="b t" style="grid-area:t100" data-note="100">$100</button>
+        <button class="b co" data-act="nope">Change Order</button>
+      </div>
+    </div>
+  </div>
+  <p class="note">Prices here are made up for practice, except the $5.00 regular takeaway coffee and $0.60 extras from your till. Type a number before tapping an item to ring up that many. Tap a docket line, then Extra, to add milk, syrup, decaf or an extra shot.</p>
+</div>
+
+<div class="modal" id="modal" hidden><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const money = n => '$' + n.toFixed(2);
+const rnd = a => a[Math.floor(Math.random()*a.length)];
+const chance = p => Math.random() < p;
+
+/* ---------- till menu (button names copied from the shop's screens) ---------- */
+const REG_TA='REG TA COFFE', LRG_TA='LRG TA COFFEE', REG_MOC='REG MOC. MAT. GOLD. BEET', LRG_MOC='LRG MOC. MAT. GOLD. BEET';
+const brown = {bg:'#4a2a17', fg:'#fff'};
+const CATS = [
+ {id:'hot',label:'HOT COFFEE',bg:'#e5731c',fg:'#1f0f02',items:[
+  ['Cappuccino',5],['Latte',5],['Flat White',5],['Chai Latte',5],['Long Black',5],['Macchiato',4.5],['Piccolo Latte',4.5],['Mocha',5.5],
+  ['Espresso',4],['RESTRETTO',4],['Real Dark Hot Chocolate',5],['Beetroot Latte',5.5],['Matcha Latte',5.5],['Golden Latte',5.5],
+  [REG_TA,5,brown],[LRG_TA,5.8,brown],[REG_MOC,5.5,brown],[LRG_MOC,6.3,brown],['TEA TA',4.5,brown],['BABYCINO',1.5],['HOT CHOC',5,{bg:'#3a1712',fg:'#fff'}]]},
+ {id:'cold',label:'COLD COFFEE',bg:'#62d3dc',fg:'#0b2b2e',items:[
+  ['ICE MATCHA',7.5],['Ice Coffee',8],['Ice Latte',6.5],['Ice Long Black',6],['Ice Chocolate',8],['Real Dark Chocolate Frappe',8.5],['Coffee Frappe',8],['Affogato',6],
+  ['ICE OTHER',7],['HOME MADE ICE TEA',6.5],['MATCHA FRAPE',8.5],['MOCHA FRAPE',8.5],['COCO MTACHA CLOUD',8.5],['CLOUDY BLACK',7],['ESPRESO CLOUD',7.5]]},
+ {id:'tea',label:'TEA / VIET COFFEE',bg:'#e9df2c',fg:'#272300',items:[
+  ['English Breakfast',4.5,{bg:'#2f7a3c',fg:'#e9f5e9'}],['French Earl Grey',4.5,{bg:'#2f7a3c',fg:'#e9f5e9'}],['Oolong Green Tea',4.5,{bg:'#2f7a3c',fg:'#e9f5e9'}],['Peppermint',4.5,{bg:'#2f7a3c',fg:'#e9f5e9'}],
+  ['Chamomile',4.5,{bg:'#2f7a3c',fg:'#e9f5e9'}],['Masala Chai Tea',5,{bg:'#2f7a3c',fg:'#e9f5e9'}],['HOT LEMON HONEY GINGER',5.5],['VIET HOT COFFEE',6,{bg:'#e5641c',fg:'#1f0f02'}],
+  ['VIET ICE COFFE',7,{bg:'#e5641c',fg:'#1f0f02'}],['EGG COFFEE',7.5]]},
+ {id:'shake',label:'MILKSHAKES AND FRAPPE',bg:'#de5a68',fg:'#2a060b',items:[
+  ['Chocolate Milk Shake',8],['Caramel Milk Shake',8],['Vanilla Milk Shake',8],['Strawberry Milk Shake',8],['Snickers Milk Shake',9],['Mars Milk Shake',9],
+  ['Lychee Breeze',8.5,{bg:'#62d3dc',fg:'#0b2b2e'}],['Mango Tango',8.5,{bg:'#62d3dc',fg:'#0b2b2e'}],['Melon Crush',8.5,{bg:'#62d3dc',fg:'#0b2b2e'}],['Tropical Delight',8.5,{bg:'#62d3dc',fg:'#0b2b2e'}],['KID MILK SHAKE',5]]},
+ {id:'juice',label:'JUICES',bg:'#df5ad5',fg:'#2a0627',items:[
+  ['SUMMER FRESH',9],['PASSION',9],['BLISSFUL PINK',9],['BEAUTY BOOST',9],['SUPER DETOX',9.5],['SUPER GREEN',9.5],['MAKE YOUR OWN 3',9],['MAKEYOUR OWN 4',10],
+  ['SINGLE or DLB SUPER JUICE ITEM',2],['MAKE YOU OWN 5 OR MORE',11],['POWER J',10]]},
+ {id:'smoothie',label:'SMOOTHIES',bg:'#4b1238',fg:'#d9a6c4',items:[
+  ['BUTTER MILK SMOOTHIES',9.5,{bg:'#2f6a80',fg:'#e6f3f8'}],['Antioxidant Smoothie',9.5,{bg:'#2f6a80',fg:'#e6f3f8'}],['Green Guru Smoothie',9.5,{bg:'#2f6a80',fg:'#e6f3f8'}],
+  ['Breakfast Smoothie',9.5,{bg:'#2f6a80',fg:'#e6f3f8'}],['Protein Shake',10,{bg:'#2f6a80',fg:'#e6f3f8'}],['The Pump',10,{bg:'#2f6a80',fg:'#e6f3f8'}],['BERRYLICIOUS SMOTHIES',9.5],['POWER LIFT SMOTHIE',10]]},
+ {id:'allday',label:'ALL DAY',bg:'#e0566a',fg:'#2a060b',items:[
+  ['TOAST',6],['GRANOLA BOWL',15],['Acai Bowl',16],['PANCAKE',17],['Smashed Avo Bruscheta',19],['Egg Benedict',21],['Corn Fritters',20],['Spanish Baked Eggs',21],
+  ['VEGGIE BREAKFAST',22],['Big Eggspresso Breakfast',25],['Bacon Egg Roll',11],['Morning Wrap',13],['Eggs on Toast',14],['Chorizo Omelette w/Toast',19],['Feta Omelette',18],
+  ['HCTO Omelette w/Toast',19],['SUN EARTH BF',22],['TURKISH BF',22],['BLAT',16],['FRENCH TOAST',18]]},
+ {id:'sw',label:'SANDWICH AND WRAPS',bg:'#6fdc6a',fg:'#0d2a05',items:[
+  ['PUMPKIN WRAP',13],['Lamb Wrap',14.5],['Smoked Salmon Wrap',14.5],['Chicken Caesar Wrap',14],['Grilled Halloumi Wrap',13.5],['Chicken Schnitzel Sandwich',15],
+  ['SIDE SWEET P CHIP',6],['SIDE SALAD',6],['SIDE CHIP',5],['TURKEY WRAP',13.5],['Ad Avo',3]]},
+ {id:'main',label:'MAIN/LUNCH SPECIAL',bg:'#d9a43a',fg:'#2a1a00',items:[
+  ['Fish Chips w/Salad W FETTA',22],['FISH SPECIAL',24],['LIGUINI',22],['NOODLE BOWL',19],['SOUP',13],['S P CALAMARI W SALAD',21],['MEDITERANEA SALAD',19],['Slow Roast Lamb Salad',22],
+  ['WARM CRUNCH CHICKEN SALAD',20],['Beef Burger',21],['CHICKEN BURGER',20],['Mushroom Burger',19],['PULLED PORK SPECIAL',22],['RISOTTO',22]]},
+ {id:'viet',label:'VIET / KIDS / TAPAS',bg:'#e5641c',fg:'#1f0f02',items:[
+  ['BBQ Pork',16],['SPRING ROLL',9],['Kid Bolognese',12],['Kids Cheese Burger and Chips',12],['(KIDS) FISH N CHIP',12],['BOWL CHIP',9],['Bowl of Sweet Potato Chips',11],
+  ['Garlic Large Tiger Prawn Skewers',18],['Salt and Pepper Calamri',16],['Garden Salad',10]]},
+ {id:'counter',label:'COUNTER FOOD AND T/A DEAL',bg:'#e9df2c',fg:'#272300',items:[
+  ['Ham Cheese Croissant',9.5],['Cheese Tomato Croisssant',9],['Ham Cheese SW',9],['Cheese Tomato SW',8.5],['Ham Cheese Tomato SW',9.5],['Pie',7.5,{bg:'#e0566a',fg:'#2a060b'}],
+  ['QUICHE',8.5,{bg:'#e0566a',fg:'#2a060b'}],['Filo',8,{bg:'#e0566a',fg:'#2a060b'}],['BUREK',8],['Spinal',7.5,{bg:'#e0566a',fg:'#2a060b'}],['Lamb Beef Sausage',7.5,{bg:'#e0566a',fg:'#2a060b'}],
+  ['Beef Fennel Sausage',7.5,{bg:'#e0566a',fg:'#2a060b'}],['FRILTATA',8.5],['Med Salad',12],['Lrg Salad',16],['BANANA BREAD',6.5],['PIDE',9],['Ad Avo',3],['MANGO COCONUT/OTHER SWEET BREAD',6.5],['LASAGNE',14]]},
+ {id:'alcohol',label:'ALCOHOL',bg:'#3fbfd0',fg:'#062a2e',items:[['Beer',9],['Glass of Wine',10],['Cider',9]]},
+ {id:'sweet',label:'SWEET',bg:'#df5ad5',fg:'#2a0627',items:[
+  ['Plain Croissant',5],['Danish',6],['Muffin',5.5],['Choc Croissant/Snail',6],['Slices',6],['MUNJA SLICE',6.5],['Protein Ball',4.5],['Cookie/muslie biscuit',4],
+  ['DONUT MIX',4.5],['Caramel custard ball',5],['CINAMON CRONUT',6],['ALREALDY WRAP PROTEIN BAR',5],['Birche Mucsli',9],['FLAVOUR CROISSANT',6.5]]},
+ {id:'drinks',label:'DRINKS',bg:'#5a50e0',fg:'#fff',items:[
+  ['Coke',4.5],['Coke Zero',4.5],['Diet Coke',4.5],['Lemonade',4.5],['Ginger Beer',5],['Lemon Lime Bitter',5],['Bottle Juice',5],['Powerade',5.5],
+  ['Sparkling Mineral Water 500ml',4.5],['Iced Tea',5],['Limonata',4.5],['Aranciata',4.5],['Aranciata Rosa',4.5],['Red Bull',5],['V Energy',5],['WATER',3.5],
+  ['KOMPUCHA',6],['BOTTLE GREEN J',7],['MONSTER',5.5]]},
+ {id:'sides',label:'SIDES',bg:'#8fe06a',fg:'#122a05',items:[['SIDE CHIP',5],['SIDE SALAD',6],['SIDE SWEET P CHIP',6],['Ad Avo',3],['Bacon',4],['Egg',2.5],['Halloumi',4.5],['Mushroom',4]]},
+ {id:'ta',label:'TAKEAWAY',bg:'#2a50d9',fg:'#fff',items:[['Container',0.5],['Bag',0.2]]},
+];
+const PRICE = {}; const CAT_OF = {};
+CATS.forEach(c => c.items.forEach(([n,p]) => { if(!(n in PRICE)){PRICE[n]=p; CAT_OF[n]=c.label;} }));
+
+const EXTRAS = [
+ ['CMOS',.6,''],['HMOS',.6,''],['PURE CREAM',.9,''],['LACTOS FREE',.6,''],['',0,''],['',0,''],
+ ['Extra Shot',.6,'blue'],['Decaf',.6,'blue'],['',0,''],
+ ['Soy Milk',.6,''],['Almond Milk',.6,''],['Oat Milk',.6,''],
+ ['Coconut Milk',.6,''],['Lactose Free',.6,''],['',0,''],
+ ['Vanilla Syrup',.6,'blue'],['Caramel Syrup',.6,'blue'],['Hazelnut Syrup',.6,'blue'],
+ ['Honey',.6,'blue'],
+];
+const canon = n => (n === 'LACTOS FREE' ? 'Lactose Free' : n);
+
+/* ---------- coffee language (from the handwritten note) ---------- */
+const DRINKS = {
+ C:{abbr:'C',name:'cappuccino',btn:'Cappuccino',grp:'cof',milk:true,w:16},
+ L:{abbr:'L',name:'latte',btn:'Latte',grp:'cof',milk:true,w:18},
+ F:{abbr:'F',name:'flat white',btn:'Flat White',grp:'cof',milk:true,w:16},
+ LB:{abbr:'LB',name:'long black',btn:'Long Black',grp:'cof',milk:false,w:9},
+ SB:{abbr:'SB',name:'short black',btn:'Espresso',grp:'cof',milk:false,reg:true,w:3},
+ Pic:{abbr:'Pic',name:'piccolo latte',btn:'Piccolo Latte',grp:'cof',milk:true,reg:true,w:5},
+ Chai:{abbr:'Chai',name:'chai latte',btn:'Chai Latte',grp:'cof',milk:true,w:6},
+ Moca:{abbr:'Moca',name:'mocha',btn:'Mocha',grp:'moc',milk:true,w:6},
+ HC:{abbr:'HC',name:'hot chocolate',btn:'Real Dark Hot Chocolate',grp:'hc',milk:true,reg:true,w:6},
+ BeetL:{abbr:'BeetL',name:'beetroot latte',btn:'Beetroot Latte',grp:'moc',milk:true,w:2},
+ GoldL:{abbr:'GoldL',name:'golden latte',btn:'Golden Latte',grp:'moc',milk:true,w:2},
+};
+const MILKS = [ // abbr, spoken, till extra
+ ['S','skim',null],['Y','soy','Soy Milk'],['A','almond','Almond Milk'],['O','oat','Oat Milk'],['Lac','lactose-free','Lactose Free']];
+const SYRUPS = [['Ca','caramel','Caramel Syrup'],['Va','vanilla','Vanilla Syrup'],['Ha','hazelnut','Hazelnut Syrup']];
+const SUGARS = [['1S','one sugar'],['2S','two sugars'],['1/2S','half a sugar'],['1E','one Equal'],['2E','two Equals']];
+const DRINK_TOKENS = Object.values(DRINKS).map(d => d.abbr.toUpperCase());
+
+const OTHERS = [
+ ['a Coke',['Coke']],['a Coke Zero',['Coke Zero']],['a bottle of water',['WATER']],['a sparkling water',['Sparkling Mineral Water 500ml']],
+ ['a Red Bull',['Red Bull']],['a lemon lime bitters',['Lemon Lime Bitter']],['a ginger beer',['Ginger Beer']],['a kombucha',['KOMPUCHA']],
+ ['a banana bread',['BANANA BREAD']],['a ham and cheese croissant',['Ham Cheese Croissant']],['a spinach roll',['Spinal']],['a pie',['Pie']],
+ ['a ham, cheese and tomato sandwich',['Ham Cheese Tomato SW']],['a quiche',['QUICHE']],['a plain croissant',['Plain Croissant']],
+ ['a muffin',['Muffin']],['a chocolate croissant',['Choc Croissant/Snail']],['a danish',['Danish']],['a cookie',['Cookie/muslie biscuit']],
+ ['a protein ball',['Protein Ball']],['a cinnamon cronut',['CINAMON CRONUT']],['an English breakfast tea',['English Breakfast','TEA TA']],
+ ['a peppermint tea',['Peppermint','TEA TA']],['an iced latte',['Ice Latte']],['a babycino',['BABYCINO']],['a chocolate milkshake',['Chocolate Milk Shake']],
+];
+
+function weighted(){
+  const all = Object.values(DRINKS); let t = all.reduce((s,d)=>s+d.w,0), r = Math.random()*t;
+  for(const d of all){ if((r -= d.w) < 0) return d; } return all[0];
+}
+function makeCoffee(level){
+  const d = weighted();
+  const c = {kind:'coffee', d, large: !d.reg && chance(.35), milk:null, strong:false, decaf:false, syrup:null, fill:false, sugar:null, qty:1};
+  const p = level === 'easy' ? .7 : 1;
+  if(d.milk && chance(.45*p)) c.milk = rnd(MILKS);
+  if(d.grp === 'cof' && chance(.16*p)) c.strong = true;
+  else if(d.grp === 'cof' && chance(.14*p)) c.decaf = true;
+  if(d.grp !== 'hc' && chance(.18*p)) c.syrup = rnd(SYRUPS);
+  if(d.milk && chance(.07*p)) c.fill = true;
+  if(chance(.35*p)) c.sugar = rnd(SUGARS);
+  if(level !== 'easy' && chance(.12)) c.qty = 2;
+  // the note's write order: 3/4 · St · Dec · milk · syrup · DRINK · sugar
+  const pre = []; if(c.fill) pre.push('3/4'); if(c.strong) pre.push('St'); if(c.decaf) pre.push('Dec');
+  if(c.milk) pre.push(c.milk[0]); if(c.syrup) pre.push(c.syrup[0]);
+  c.pre = pre; c.post = c.sugar ? [c.sugar[0]] : [];
+  c.cup = [...pre, d.abbr, ...c.post].join(' ');
+  const grpBtn = {cof:[REG_TA,LRG_TA], moc:[REG_MOC,LRG_MOC], hc:['HOT CHOC','HOT CHOC']}[d.grp];
+  c.accept = c.large ? [grpBtn[1]] : (d.grp==='hc' ? ['HOT CHOC', d.btn] : [grpBtn[0], d.btn]);
+  c.extras = [];
+  if(c.strong) c.extras.push('Extra Shot'); if(c.decaf) c.extras.push('Decaf');
+  if(c.milk && c.milk[2]) c.extras.push(c.milk[2]); if(c.syrup) c.extras.push(c.syrup[2]);
+  c.extras.sort();
+  // spoken
+  const words = [];
+  if(c.large) words.push('large'); else if(chance(.15) && !d.reg) words.push('regular');
+  if(c.strong) words.push('strong'); if(c.decaf) words.push('decaf');
+  if(c.milk) words.push(c.milk[1]);
+  const syrupFirst = c.syrup && chance(.5);
+  if(syrupFirst) words.push(c.syrup[1]);
+  words.push(c.qty > 1 ? d.name + 's' : d.name);
+  let s = words.join(' ');
+  const tail = [];
+  if(c.syrup && !syrupFirst) tail.push('with ' + c.syrup[1]);
+  if(c.fill) tail.push('three-quarter full');
+  if(c.sugar) tail.push((tail.length ? '' : 'with ') + c.sugar[1] + (c.qty>1 ? ' each' : ''));
+  if(tail.length) s += ' ' + tail.join(', ');
+  c.say = (c.qty > 1 ? 'two ' : (/^[aeiou]/i.test(s) ? 'an ' : 'a ')) + s;
+  c.short = words.join(' ');
+  return c;
+}
+function makeOrder(level){
+  const items = [];
+  const nCoffee = level === 'easy' ? 1 : level === 'normal' ? (chance(.55) ? 1 : 2) : 2 + Math.floor(Math.random()*3);
+  for(let i=0;i<nCoffee;i++) items.push(makeCoffee(level));
+  const nOther = level === 'easy' ? 0 : level === 'normal' ? (chance(.35) ? 1 : 0) : (chance(.6) ? 1 + (chance(.3)?1:0) : 0);
+  const used = new Set();
+  for(let i=0;i<nOther;i++){ let o; do { o = rnd(OTHERS); } while(used.has(o[0])); used.add(o[0]);
+    items.splice(Math.floor(Math.random()*(items.length+1)), 0, {kind:'other', say:o[0], short:o[0].replace(/^an? /,''), accept:o[1], extras:[], qty:1}); }
+  let total = 0;
+  items.forEach(it => total += it.qty * (PRICE[it.accept[0]] + it.extras.reduce((s,e)=>s+(PRICE_EX[e]||0),0)));
+  total = Math.round(total*100)/100;
+  const open = rnd(['Hi, can I get ','Morning! Could I please have ','Hey, I’ll grab ','Can I have ','Hiya, just ','Hello, could I get ']);
+  const list = items.map(i=>i.say);
+  const joined = list.length > 1 ? list.slice(0,-1).join(', ') + ' and ' + list[list.length-1] : list[0];
+  const close = rnd([', please.',', thanks.','. Takeaway, thanks.',', cheers.']);
+  const cash = chance(.45);
+  let tender = null, tenderSay = '';
+  if(cash){
+    const notes = [5,10,20,50,100].filter(n => n >= total);
+    const r = Math.random();
+    if(r < .15){ tender = total; tenderSay = 'exact money, ' + money(total); }
+    else if(r < .3 && Math.ceil(total) !== total && Math.ceil(total) < notes[0]){ tender = Math.ceil(total); tenderSay = money(tender) + ' in coins and notes'; }
+    else { tender = (r > .85 && notes[1]) ? notes[1] : notes[0]; tenderSay = 'a $' + tender + ' note'; }
+  }
+  return {items, total, text: open + joined + close, cash, tender, tenderSay};
+}
+const PRICE_EX = {}; EXTRAS.forEach(([n,p]) => { if(n) PRICE_EX[canon(n)] = p; });
+
+/* ---------- state ---------- */
+let settings = {level:'normal', memory:false, askChange:true};
+let stats = {served:0, perfect:0, streak:0, best:null};
+try { Object.assign(settings, JSON.parse(localStorage.getItem('tt-settings')||'{}')); Object.assign(stats, JSON.parse(localStorage.getItem('tt-stats')||'{}')); } catch(e){}
+const save = () => { try { localStorage.setItem('tt-settings', JSON.stringify(settings)); localStorage.setItem('tt-stats', JSON.stringify(stats)); } catch(e){} };
+
+const S = {cat:'hot', lines:[], sel:null, buf:'', mode:'grid', backup:null, order:null, start:0, no:0, done:false, repeats:0};
+let lineId = 0;
+
+/* ---------- rendering ---------- */
+function lineTotal(l){ return l.qty * (l.price + l.extras.reduce((s,e)=>s+e.price,0)); }
+function total(){ return Math.round(S.lines.reduce((s,l)=>s+lineTotal(l),0)*100)/100; }
+
+function renderDocket(){
+  const tb = $('#lines');
+  if(!S.lines.length){ tb.innerHTML = '<tr class="empty"><td colspan="3">Tap items to ring them up</td></tr>'; }
+  else tb.innerHTML = S.lines.map(l => {
+    const sel = l.id === S.sel ? ' sel' : '';
+    return `<tr class="item${sel}" data-line="${l.id}"><td>${esc(l.name)}</td><td class="r">${l.qty}</td><td class="r">${(l.qty*l.price).toFixed(2)}</td></tr>` +
+      l.extras.map(e => `<tr class="mod${sel}" data-line="${l.id}"><td>&nbsp;&nbsp;+ ${esc(e.name)}</td><td class="r">${l.qty}</td><td class="r">${(l.qty*e.price).toFixed(2)}</td></tr>`).join('');
+  }).join('');
+  const sl = S.lines.find(l => l.id === S.sel);
+  $('#f-buf').textContent = S.buf || (sl ? sl.name.slice(0,22) : '');
+  $('#f-price').textContent = sl ? money(sl.price) : '';
+  $('#f-qty').textContent = sl ? sl.qty : '';
+  $('#f-items').textContent = S.lines.reduce((s,l)=>s+l.qty,0);
+  $('#f-total').textContent = money(total());
+  const selRow = tb.querySelector('tr.sel'); if(selRow) selRow.scrollIntoView({block:'nearest'});
+}
+function btnStyle(bg,fg){ return `background:${bg};color:${fg}`; }
+function renderGrid(){
+  const g = $('#grid');
+  if(S.mode === 'extras'){
+    const l = S.lines.find(x => x.id === S.sel);
+    const on = new Set(l ? l.extras.map(e=>e.name) : []);
+    g.className = 'grid ex';
+    g.innerHTML = `<div class="exhead">Extras for: ${esc(l ? l.name : '')}</div>` +
+      EXTRAS.map(([n,p,c]) => n ? `<button class="b mod-btn ${c}${on.has(n)?' on':''}" data-extra="${esc(n)}">${esc(n)}<span class="p">${money(p)}</span></button>` : '<span></span>').join('') +
+      `<div class="exbar"><button class="b" style="${btnStyle('var(--go)','#0d2a05')}" data-act="exok">Ok</button><button class="b" style="${btnStyle('#ece36a','#2a2600')}" data-act="excancel">Cancel</button></div>`;
+    return;
+  }
+  g.className = 'grid';
+  const c = CATS.find(x => x.id === S.cat);
+  g.innerHTML = c.items.map(([n,p,col]) => {
+    const bg = col ? col.bg : c.bg, fg = col ? col.fg : c.fg;
+    return `<button class="b" style="${btnStyle(bg,fg)}" data-item="${esc(n)}">${esc(n)}</button>`;
+  }).join('');
+}
+function renderTabs(){
+  $('#tabs').innerHTML = CATS.map(c => `<button class="b" style="${btnStyle(c.bg,c.fg)}" data-cat="${c.id}" aria-pressed="${c.id===S.cat}">${esc(c.label)}</button>`).join('');
+}
+function renderStats(){
+  $('#st-served').textContent = stats.served; $('#st-perfect').textContent = stats.perfect;
+  $('#st-streak').textContent = stats.streak; $('#st-best').textContent = stats.best == null ? '–' : fmtTime(stats.best);
+}
+function renderSettings(){
+  document.querySelectorAll('[data-level]').forEach(b => b.setAttribute('aria-pressed', b.dataset.level === settings.level));
+  $('#opt-memory').setAttribute('aria-pressed', settings.memory);
+  $('#opt-change').setAttribute('aria-pressed', settings.askChange);
+}
+const fmtTime = s => Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2,'0');
+
+/* ---------- customer ---------- */
+let hideTimer = null;
+function newCustomer(){
+  S.order = makeOrder(settings.level); S.lines = []; S.sel = null; S.buf = ''; S.mode = 'grid'; S.cat = 'hot'; S.done = false; S.repeats = 0;
+  S.no++; S.start = Date.now();
+  $('#cust-no').textContent = 'Customer ' + S.no;
+  const say = $('#say'); say.textContent = '“' + S.order.text + '”'; say.classList.remove('hidden');
+  const chip = $('#paychip');
+  if(S.order.cash){ chip.className = 'paychip cash'; chip.textContent = 'CASH · hands you ' + S.order.tenderSay; }
+  else { chip.className = 'paychip card'; chip.textContent = rnd(['CARD · taps their card','CARD · “Card, thanks”','CARD · holds up their phone']); }
+  const cups = []; S.order.items.forEach(it => { if(it.kind === 'coffee') for(let q=0;q<it.qty;q++) cups.push(it); });
+  $('#cups').innerHTML = cups.length ? cups.map((c,i) => `<div class="cup"><div class="lid"></div><div class="body"><span class="num">${c.large?'LARGE':'REG'} · CUP ${i+1}</span><input id="cup-${i}" aria-label="Cup ${i+1}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="write here"></div></div>`).join('')
+    : '<p class="nocups">No hot coffees in this order.</p>';
+  clearTimeout(hideTimer); $('#btn-repeat').hidden = true;
+  if(settings.memory){ hideTimer = setTimeout(() => { say.classList.add('hidden'); $('#btn-repeat').hidden = false; }, 8000); }
+  renderDocket(); renderGrid(); renderTabs();
+}
+setInterval(() => { if(S.order && !S.done) $('#timer').textContent = fmtTime((Date.now()-S.start)/1000); }, 500);
+
+/* ---------- till actions ---------- */
+let toastT = null;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(()=>t.hidden=true, 2200); }
+function addItem(name){
+  const qty = S.buf && /^\d+$/.test(S.buf) ? Math.max(1, parseInt(S.buf,10)) : 1;
+  S.buf = '';
+  const l = {id: ++lineId, name, price: PRICE[name], qty, extras: []};
+  S.lines.push(l); S.sel = l.id; renderDocket();
+}
+function toggleExtra(name){
+  const l = S.lines.find(x => x.id === S.sel); if(!l) return;
+  const i = l.extras.findIndex(e => e.name === name);
+  if(i >= 0) l.extras.splice(i,1); else l.extras.push({name, price: EXTRAS.find(e=>e[0]===name)[1]});
+  renderDocket(); renderGrid();
+}
+function pay(method, tendered){
+  if(S.done) return;
+  if(!S.lines.length){ toast('Ring something up first'); return; }
+  if(S.mode === 'extras'){ toast('Tap Ok to close the extras first'); return; }
+  const tot = total();
+  if(method === 'cash' && tendered + 1e-9 < tot){ toast('Tendered ' + money(tendered) + ' is less than the total ' + money(tot)); S.buf=''; renderDocket(); return; }
+  S.done = true; S.buf = ''; renderDocket();
+  const secs = (Date.now() - S.start)/1000;
+  const result = {method, tendered, total: tot, secs, changeAnswer: null};
+  if(method === 'cash' && settings.askChange){ askChange(result); } else grade(result);
+}
+function askChange(result){
+  openModal(`<h2>Count the change</h2>
+   <div class="sum"><span>Total</span><b>${money(result.total)}</b><span>Tendered</span><b>${money(result.tendered)}</b></div>
+   <p>How much change do you hand back?</p>
+   <form class="chg" id="chg-form"><span>$</span><input id="chg-in" inputmode="decimal" autocomplete="off" placeholder="0.00"><button class="big" type="submit">Hand it over</button></form>`);
+  const inp = $('#chg-in'); setTimeout(()=>inp.focus(), 50);
+  $('#chg-form').addEventListener('submit', e => { e.preventDefault(); const v = parseFloat(inp.value.replace(/[^0-9.]/g,'')); result.changeAnswer = isNaN(v) ? 0 : v; grade(result); });
+}
+
+/* ---------- grading ---------- */
+function normTok(t){
+  t = t.toUpperCase().replace(/½/g,'1/2').replace(/¾/g,'3/4');
+  if(t === 'S+' ) return t;
+  return t;
+}
+function gradeCup(written, c){
+  const toks = written.trim().split(/\s+/).filter(Boolean).map(normTok);
+  const di = toks.findIndex(t => DRINK_TOKENS.includes(t));
+  const expPre = c.pre.map(normTok), expDrink = c.d.abbr.toUpperCase(), expPost = c.post.map(normTok);
+  if(!toks.length) return {ok:false, why:'Cup left blank'};
+  if(di < 0) return {ok:false, why:'No drink code found (needs ' + c.d.abbr + ')'};
+  const pre = toks.slice(0,di), post = toks.slice(di+1).map(t => (t === 'S' ? '1S' : t === 'E' ? '1E' : t));
+  if(toks[di] !== expDrink) return {ok:false, why:'Drink should be ' + c.d.abbr};
+  const same = (a,b) => a.length === b.length && [...a].sort().join('|') === [...b].sort().join('|');
+  if(!same(pre, expPre)) return {ok:false, why: describeDiff(pre, expPre, 'before the drink')};
+  if(!same(post, expPost)) return {ok:false, why: describeDiff(post, expPost, 'after the drink')};
+  const exactOrder = pre.join(' ') === expPre.join(' ');
+  return {ok:true, why: exactOrder ? '' : 'Right codes, usual order is ' + c.cup};
+}
+function describeDiff(got, exp, where){
+  const missing = exp.filter(t => !got.includes(t)), extra = got.filter(t => !exp.includes(t));
+  const bits = []; if(missing.length) bits.push('missing ' + missing.join(', ')); if(extra.length) bits.push('didn’t need ' + extra.join(', '));
+  return (bits.join('; ') || 'codes in the wrong place') + ' ' + where;
+}
+function grade(r){
+  const o = S.order, res = [];
+  // till items
+  const exp = []; o.items.forEach(it => { for(let q=0;q<it.qty;q++) exp.push({it, used:false}); });
+  const got = []; S.lines.forEach(l => { for(let q=0;q<l.qty;q++) got.push({name:l.name, extras:l.extras.map(e=>canon(e.name)).sort(), used:false}); });
+  const sameEx = (a,b) => a.join('|') === b.join('|');
+  const tillRes = [];
+  exp.forEach(e => { const g = got.find(g => !g.used && e.it.accept.includes(g.name) && sameEx(e.it.extras, g.extras));
+    if(g){ g.used = e.used = true; tillRes.push({ok:true, t:`${cap(e.it.short)} → ${g.name}${g.extras.length?' + '+g.extras.join(' + '):''}`}); } });
+  exp.filter(e=>!e.used).forEach(e => { const g = got.find(g => !g.used && e.it.accept.includes(g.name));
+    if(g){ g.used = e.used = true;
+      const miss = e.it.extras.filter(x=>!g.extras.includes(x)), ext = g.extras.filter(x=>!e.it.extras.includes(x));
+      tillRes.push({ok:false, t:`${cap(e.it.short)} → ${g.name}`, h:[miss.length?'Missing extra: '+miss.join(', '):'', ext.length?'Not asked for: '+ext.join(', '):''].filter(Boolean).join('. ')}); } });
+  exp.filter(e=>!e.used).forEach(e => tillRes.push({ok:false, t:`Missing: ${e.it.short}`, h:`Tap ${CAT_OF[e.it.accept[0]]} › ${e.it.accept[0]}${e.it.extras.length?', then Extra › '+e.it.extras.join(' + '):''}`}));
+  got.filter(g=>!g.used).forEach(g => tillRes.push({ok:false, t:`Not ordered: ${g.name}`, h:'Void this line'}));
+  // cups
+  const cupRes = []; let ci = 0;
+  o.items.forEach(it => { if(it.kind!=='coffee') return; for(let q=0;q<it.qty;q++){ const inp = $('#cup-'+ci); const w = inp ? inp.value : '';
+    const g = gradeCup(w, it); cupRes.push({ok:g.ok, t:`Cup ${ci+1}: ${w.trim() ? '<code>'+esc(w.trim())+'</code>' : '(blank)'}`, h: g.ok ? (g.why || '') : g.why + ' · should be <code>' + esc(it.cup) + '</code>', raw:true}); ci++; } });
+  // payment
+  const payRes = [];
+  const wantCash = o.cash;
+  payRes.push({ok: (r.method==='cash') === wantCash, t: r.method==='cash' ? 'Paid by cash' : 'Paid by card', h: (r.method==='cash') === wantCash ? '' : 'They were paying by ' + (wantCash?'cash':'card')});
+  if(wantCash && r.method === 'cash'){
+    const tOk = Math.abs(r.tendered - o.tender) < .005;
+    payRes.push({ok:tOk, t:'Tendered ' + money(r.tendered), h: tOk ? '' : 'They gave you ' + money(o.tender) + ' (type the amount, then CASH, or tap the note)'});
+    const due = Math.round((r.tendered - r.total)*100)/100;
+    if(r.changeAnswer != null){ const cOk = Math.abs(r.changeAnswer - due) < .005;
+      payRes.push({ok:cOk, t:'Change ' + money(r.changeAnswer), h: cOk ? '' : 'Till says ' + money(due) + ' (' + money(r.tendered) + ' − ' + money(r.total) + ')'}); }
+    else payRes.push({ok:true, t:'Change ' + money(due)});
+  }
+  const totOk = Math.abs(r.total - o.total) < .005;
+  const all = [...tillRes, ...cupRes, ...payRes];
+  const okCount = all.filter(x=>x.ok).length, perfect = okCount === all.length;
+  stats.served++; if(perfect){ stats.perfect++; stats.streak++; if(stats.best == null || r.secs < stats.best) stats.best = Math.round(r.secs); } else stats.streak = 0;
+  save(); renderStats();
+  const li = x => `<li class="${x.ok?'ok':'no'}"><span class="ic">${x.ok?'✓':'✗'}</span><span>${x.raw?x.t:esc(x.t)}${x.h?`<span class="hint">${x.raw?x.h:esc(x.h)}</span>`:''}</span></li>`;
+  openModal(`<div class="row" style="align-items:baseline;justify-content:space-between"><h2>${perfect ? 'Perfect order' : 'Order checked'}</h2>
+     <span class="score${perfect?' perfect':''}">${okCount}/${all.length}</span></div>
+   <div class="sum"><span>Time</span><b>${fmtTime(r.secs)}</b><span>Your total</span><b>${money(r.total)}${totOk?'':' (should be '+money(o.total)+')'}</b></div>
+   <ul class="res"><h3>Till</h3>${tillRes.map(li).join('')}${cupRes.length?'<h3>Cups</h3>'+cupRes.map(li).join(''):''}<h3>Payment</h3>${payRes.map(li).join('')}</ul>
+   <p class="note">They said: “${esc(o.text)}”</p>
+   <div class="row"><button class="big" id="btn-next">Next customer</button></div>`);
+  $('#btn-next').addEventListener('click', () => { closeModal(); newCustomer(); });
+  setTimeout(()=>$('#btn-next').focus(), 50);
+}
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+/* ---------- modals ---------- */
+function openModal(html){ $('#sheet').innerHTML = html; $('#modal').hidden = false; }
+function closeModal(){ $('#modal').hidden = true; }
+$('#modal').addEventListener('click', e => { if(e.target.id === 'modal' && !$('#btn-next') && !$('#chg-form')) closeModal(); });
+
+function cheat(){
+  const row = (a,b) => `<tr><td>${a}</td><td><code>${b}</code></td></tr>`;
+  openModal(`<h2>Cheat sheet</h2>
+   <p>Write order on the cup:</p>
+   <div class="orderline">3/4 · St · Dec · milk · syrup · DRINK · sugar</div>
+   <p class="note">e.g. a ¾ strong soy caramel latte with half a sugar → <code>3/4 St Y Ca L 1/2S</code>. Decaf skim vanilla cappuccino, two Equal → <code>Dec S Va C 2E</code>.</p>
+   <div class="cheat"><div class="cols">
+    <div><h3>Drinks</h3><table>${row('Cappuccino','C')}${row('Latte','L')}${row('Flat white','F')}${row('Hot chocolate','HC')}${row('Mocha','Moca')}${row('Chai latte','Chai')}${row('Long black','LB')}${row('Short black','SB')}${row('Piccolo latte','Pic')}${row('Beetroot latte','BeetL')}${row('Golden latte','GoldL')}</table></div>
+    <div><h3>Extras</h3><table>${row('Strong','St')}${row('Skim','S')}${row('Soy','Y')}${row('Almond','A')}${row('Oat','O')}${row('Lactose free','Lac')}${row('Decaf','Dec')}${row('Caramel','Ca')}${row('Vanilla','Va')}${row('Hazelnut','Ha')}${row('Sugar (1)','1S')}${row('Equal (1)','1E')}</table></div>
+   </div></div>
+   <p class="note">On the till: regular takeaway coffee → <b>REG TA COFFE</b> (or the drink’s own button), large → <b>LRG TA COFFEE</b>. Mocha, beetroot and golden use the <b>MOC. MAT. GOLD. BEET</b> buttons; hot chocolate uses <b>HOT CHOC</b>. Then tap the line and <b>Extra</b> for milk, syrup, Decaf, and Extra Shot for “strong”. Skim, sugar and Equal are free so they only go on the cup.</p>
+   <div class="row"><button class="big alt" id="btn-close">Close</button></div>`);
+  $('#btn-close').addEventListener('click', closeModal);
+}
+function otherTypes(){
+  if(!S.lines.length){ toast('Ring something up first'); return; }
+  openModal(`<h2>Other Types</h2><p>Total ${money(total())}</p>
+   <div class="row"><button class="big" data-pay="eftpos">EFTPOS</button><button class="big" data-pay="credit">Credit Card</button><button class="big alt" id="btn-close">Cancel</button></div>`);
+  $('#btn-close').addEventListener('click', closeModal);
+  $('#sheet').querySelectorAll('[data-pay]').forEach(b => b.addEventListener('click', () => { closeModal(); pay('card'); }));
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click', e => {
+  const b = e.target.closest('button,tr[data-line]'); if(!b) return;
+  if(b.matches('.b')){ b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); }
+  if(S.done && b.closest('.till')){ return; }
+  const d = b.dataset;
+  if(d.line){ S.sel = +d.line; renderDocket(); if(S.mode==='extras') renderGrid(); return; }
+  if(d.item){ if(S.mode==='extras'){ toast('Tap Ok to close the extras first'); return; } addItem(d.item); return; }
+  if(d.extra){ toggleExtra(d.extra); return; }
+  if(d.cat){ if(S.mode==='extras'){ toast('Tap Ok to close the extras first'); return; } S.cat = d.cat; renderGrid(); renderTabs(); return; }
+  if(d.key){ if(S.buf.length < 8 && !(d.key==='.' && S.buf.includes('.'))) S.buf += d.key; renderDocket(); return; }
+  if(d.note){ S.buf = ''; pay('cash', +d.note); return; }
+  if(d.level){ settings.level = d.level; save(); renderSettings(); newCustomer(); return; }
+  switch(d.act){
+    case 'cls': S.buf = ''; renderDocket(); break;
+    case 'enter': toast(S.buf ? 'Type an amount then tap CASH, or a number then tap an item' : 'Enter does nothing here'); break;
+    case 'void': { const i = S.lines.findIndex(l=>l.id===S.sel); if(i<0){ toast('Tap a docket line to void it'); break; }
+      S.lines.splice(i,1); S.sel = S.lines.length ? S.lines[S.lines.length-1].id : null; if(S.mode==='extras'){ S.mode='grid'; renderGrid(); } renderDocket(); break; }
+    case 'plus': case 'minus1': { const l = S.lines.find(l=>l.id===S.sel); if(!l){ toast('Tap a docket line first'); break; }
+      l.qty += d.act==='plus' ? 1 : -1; if(l.qty < 1) l.qty = 1; renderDocket(); break; }
+    case 'extra': { if(!S.lines.find(l=>l.id===S.sel)){ toast('Tap a drink in the docket first'); break; }
+      if(S.mode==='extras'){ S.mode='grid'; renderGrid(); break; }
+      const l = S.lines.find(l=>l.id===S.sel); S.backup = {id:l.id, extras:l.extras.slice()}; S.mode='extras'; renderGrid(); break; }
+    case 'exok': S.mode='grid'; renderGrid(); break;
+    case 'excancel': { const l = S.lines.find(l=>l.id===S.backup?.id); if(l) l.extras = S.backup.extras; S.mode='grid'; renderGrid(); renderDocket(); break; }
+    case 'cash': { const t = S.buf ? parseFloat(S.buf) : total(); S.buf=''; pay('cash', isNaN(t) ? total() : t); break; }
+    case 'other': if(S.mode==='extras'){ toast('Tap Ok to close the extras first'); break; } otherTypes(); break;
+    case 'dinein': toast('Practice orders are all takeaway'); break;
+    case 'takeaway': break;
+    case 'nope': toast('Not used in practice'); break;
+  }
+});
+$('#opt-memory').addEventListener('click', () => { settings.memory = !settings.memory; save(); renderSettings();
+  if(!settings.memory){ clearTimeout(hideTimer); $('#say').classList.remove('hidden'); $('#btn-repeat').hidden = true; } });
+$('#opt-change').addEventListener('click', () => { settings.askChange = !settings.askChange; save(); renderSettings(); });
+$('#btn-cheat').addEventListener('click', cheat);
+$('#btn-skip').addEventListener('click', () => { stats.streak = 0; save(); renderStats(); newCustomer(); });
+$('#btn-repeat').addEventListener('click', () => { const s = $('#say'); s.classList.remove('hidden'); $('#btn-repeat').hidden = true;
+  clearTimeout(hideTimer); hideTimer = setTimeout(() => { s.classList.add('hidden'); $('#btn-repeat').hidden = false; }, 5000); });
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && !$('#modal').hidden && !$('#btn-next') && !$('#chg-form')) closeModal(); });
+
+renderSettings(); renderStats(); newCustomer();
+})();
+</script>
