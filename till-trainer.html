@@ -214,6 +214,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
       <button data-level="rush">Rush</button>
     </div>
     <button class="pill" id="opt-memory" aria-pressed="false">Hide order after 8s</button>
+    <button class="pill" id="opt-food" aria-pressed="false">Food every order</button>
     <button class="pill" id="opt-change" aria-pressed="true">I work out the change</button>
     <button class="pill" id="btn-cheat">Cheat sheet</button>
     <button class="pill" id="btn-skip">Skip customer</button>
@@ -398,6 +399,18 @@ const OTHERS = [
  ['a peppermint tea',['Peppermint','TEA TA']],['an iced latte',['Ice Latte']],['a babycino',['BABYCINO']],['a chocolate milkshake',['Chocolate Milk Shake']],
 ];
 
+const FOODS = [
+ ['the smashed avo',['Smashed Avo Bruscheta']],['eggs benedict',['Egg Benedict']],['the big breakfast',['Big Eggspresso Breakfast']],['a bacon and egg roll',['Bacon Egg Roll']],
+ ['the corn fritters',['Corn Fritters']],['some pancakes',['PANCAKE']],['an acai bowl',['Acai Bowl']],['the granola bowl',['GRANOLA BOWL']],['the Spanish baked eggs',['Spanish Baked Eggs']],
+ ['eggs on toast',['Eggs on Toast']],['some toast',['TOAST']],['the French toast',['FRENCH TOAST']],['the veggie breakfast',['VEGGIE BREAKFAST']],['a feta omelette',['Feta Omelette']],
+ ['a morning wrap',['Morning Wrap']],['a beef burger',['Beef Burger']],['a chicken burger',['CHICKEN BURGER']],['the mushroom burger',['Mushroom Burger']],['the fish and chips',['Fish Chips w/Salad W FETTA']],
+ ['a bowl of soup',['SOUP']],['the risotto',['RISOTTO']],['a chicken caesar wrap',['Chicken Caesar Wrap']],['a lamb wrap',['Lamb Wrap']],['a halloumi wrap',['Grilled Halloumi Wrap']],
+ ['a chicken schnitzel sandwich',['Chicken Schnitzel Sandwich']],['a side of chips',['SIDE CHIP','BOWL CHIP']],['a bowl of sweet potato chips',['Bowl of Sweet Potato Chips','SIDE SWEET P CHIP']],
+ ['the salt and pepper calamari',['Salt and Pepper Calamri']],['the kids fish and chips',['(KIDS) FISH N CHIP']],['a kids cheeseburger and chips',['Kids Cheese Burger and Chips']],
+ ['the kids bolognese',['Kid Bolognese']],['some spring rolls',['SPRING ROLL']],['a garden salad',['Garden Salad']],['a lasagne',['LASAGNE']],['a burek',['BUREK']],
+ ['a lamb and beef sausage roll',['Lamb Beef Sausage']],['a banana bread',['BANANA BREAD']],['a ham and cheese croissant',['Ham Cheese Croissant']],['a spinach roll',['Spinal']],
+ ['a pie',['Pie']],['a quiche',['QUICHE']],['a muffin',['Muffin']],['a chocolate croissant',['Choc Croissant/Snail']],['a plain croissant',['Plain Croissant']],
+];
 function weighted(){
   const all = Object.values(DRINKS); let t = all.reduce((s,d)=>s+d.w,0), r = Math.random()*t;
   for(const d of all){ if((r -= d.w) < 0) return d; } return all[0];
@@ -444,12 +457,18 @@ function makeCoffee(level){
 }
 function makeOrder(level){
   const items = [];
-  const nCoffee = level === 'easy' ? 1 : level === 'normal' ? (chance(.55) ? 1 : 2) : 2 + Math.floor(Math.random()*3);
+  let nCoffee = level === 'easy' ? 1 : level === 'normal' ? (chance(.55) ? 1 : 2) : 2 + Math.floor(Math.random()*3);
+  if(settings.food && chance(.2)) nCoffee = 0;
   for(let i=0;i<nCoffee;i++) items.push(makeCoffee(level));
   const nOther = level === 'easy' ? 0 : level === 'normal' ? (chance(.35) ? 1 : 0) : (chance(.6) ? 1 + (chance(.3)?1:0) : 0);
   const used = new Set();
   for(let i=0;i<nOther;i++){ let o; do { o = rnd(OTHERS); } while(used.has(o[0])); used.add(o[0]);
     items.splice(Math.floor(Math.random()*(items.length+1)), 0, {kind:'other', say:o[0], short:o[0].replace(/^an? /,''), accept:o[1], extras:[], qty:1}); }
+  if(settings.food){
+    const nFood = 1 + (level === 'rush' ? Math.floor(Math.random()*3) : level === 'normal' && chance(.35) ? 1 : 0);
+    for(let i=0;i<nFood;i++){ let f; do { f = rnd(FOODS); } while(used.has(f[0])); used.add(f[0]);
+      items.splice(Math.floor(Math.random()*(items.length+1)), 0, {kind:'other', say:f[0], short:f[0].replace(/^(an?|the|some) /,''), accept:f[1], extras:[], qty:1}); }
+  }
   let total = 0;
   items.forEach(it => total += it.qty * (PRICE[it.accept[0]] + it.extras.reduce((s,e)=>s+(PRICE_EX[e]||0),0)));
   total = Math.round(total*100)/100;
@@ -546,6 +565,7 @@ function renderSettings(){
   document.querySelectorAll('[data-level]').forEach(b => b.setAttribute('aria-pressed', b.dataset.level === settings.level));
   $('#opt-memory').setAttribute('aria-pressed', settings.memory);
   $('#opt-change').setAttribute('aria-pressed', settings.askChange);
+  $('#opt-food').setAttribute('aria-pressed', !!settings.food);
 }
 const fmtTime = s => Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2,'0');
 
@@ -755,6 +775,7 @@ document.addEventListener('click', e => {
 $('#opt-memory').addEventListener('click', () => { settings.memory = !settings.memory; save(); renderSettings();
   if(!settings.memory){ clearTimeout(hideTimer); $('#say').classList.remove('hidden'); $('#btn-repeat').hidden = true; } });
 $('#opt-change').addEventListener('click', () => { settings.askChange = !settings.askChange; save(); renderSettings(); });
+$('#opt-food').addEventListener('click', () => { settings.food = !settings.food; save(); renderSettings(); newCustomer(); });
 $('#btn-cheat').addEventListener('click', cheat);
 $('#btn-skip').addEventListener('click', () => { stats.streak = 0; save(); renderStats(); newCustomer(); });
 $('#btn-repeat').addEventListener('click', () => { const s = $('#say'); s.classList.remove('hidden'); $('#btn-repeat').hidden = true;
