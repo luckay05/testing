@@ -37,6 +37,10 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .seg button{background:var(--frame);border:0;padding:6px 11px;font-size:.82rem;font-weight:600}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--room)}
 .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.sections{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.seclbl{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;margin-right:2px}
+.sections button{border:1px solid var(--frame-2);background:var(--frame);border-radius:6px;padding:6px 10px;font-family:var(--f-btn);font-weight:700;font-size:.95rem;letter-spacing:.02em}
+.sections button[aria-pressed="true"]{border-color:transparent}
 
 /* counter */
 .counter{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:12px}
@@ -233,7 +237,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
   </header>
   <div class="controls">
     <div class="seg" role="group" aria-label="How busy">
-      <button data-level="easy">1 coffee</button>
+      <button data-level="easy">Quiet</button>
       <button data-level="normal">Normal</button>
       <button data-level="rush">Rush</button>
     </div>
@@ -245,6 +249,17 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
     <button class="pill" id="btn-skip">Skip customer</button>
   </div>
 
+  <div class="sections" role="group" aria-label="What to practise">
+    <span class="seclbl">Practise</span>
+    <button data-section="all">Full counter</button>
+    <button data-section="allday">All Day</button>
+    <button data-section="main">Main / Lunch</button>
+    <button data-section="shake">Milkshakes &amp; Frappe</button>
+    <button data-section="sw">Sandwich &amp; Wraps</button>
+    <button data-section="juice">Juices</button>
+    <button data-section="smoothie">Smoothies</button>
+    <button data-section="counter">Counter Food &amp; T/A Deal</button>
+  </div>
   <section class="counter">
     <div class="customer">
       <div class="cust-head"><span id="cust-no">Customer 1</span><span class="timer" id="timer">0:00</span></div>
@@ -356,10 +371,10 @@ const CATS = [
  {id:'allday',label:'ALL DAY',bg:'#e0566a',fg:'#2a060b',items:[
   ['TOAST',6],['GRANOLA BOWL',15],['Acai Bowl',16],['PANCAKE',17],['Smashed Avo Bruscheta',19],['Egg Benedict',21],['Corn Fritters',20],['Spanish Baked Eggs',21],
   ['VEGGIE BREAKFAST',22],['Big Eggspresso Breakfast',25],['Bacon Egg Roll',11],['Morning Wrap',13],['Eggs on Toast',14],['Chorizo Omelette w/Toast',19],['Feta Omelette',18],
-  ['HCTO Omelette w/Toast',19],['SUN EARTH BF',22],['TURKISH BF',22],['BLAT',16],['FRENCH TOAST',18]]},
+  ['HCTO Omelette w/Toast',19],['SUN EARTH BF',22],['TURKISH BF',22],['BLAT',16],['FRENCH TOAST',18],['GREEN EGG',21]]},
  {id:'sw',label:'SANDWICH AND WRAPS',bg:'#6fdc6a',fg:'#0d2a05',items:[
   ['PUMPKIN WRAP',13],['Lamb Wrap',14.5],['Smoked Salmon Wrap',14.5],['Chicken Caesar Wrap',14],['Grilled Halloumi Wrap',13.5],['Chicken Schnitzel Sandwich',15],
-  ['SIDE SWEET P CHIP',6],['SIDE SALAD',6],['SIDE CHIP',5],['TURKEY WRAP',13.5],['Ad Avo',3]]},
+  ['SIDE SWEET P CHIP',6],['SIDE SALAD',6],['SIDE CHIP',5],['CHCIKEN MANGO WRAP',14],['Ad Avo',3]]},
  {id:'main',label:'MAIN/LUNCH SPECIAL',bg:'#d9a43a',fg:'#2a1a00',items:[
   ['Fish Chips w/Salad W FETTA',22],['FISH SPECIAL',24],['LIGUINI',22],['NOODLE BOWL',19],['SOUP',13],['S P CALAMARI W SALAD',21],['MEDITERANEA SALAD',19],['Slow Roast Lamb Salad',22],
   ['WARM CRUNCH CHICKEN SALAD',20],['Beef Burger',21],['CHICKEN BURGER',20],['Mushroom Burger',19],['PULLED PORK SPECIAL',22],['RISOTTO',22]]},
@@ -378,8 +393,11 @@ const CATS = [
   ['Coke',4],['Coke Zero',4],['Diet Coke',4],['Lemonade',4],['Ginger Beer',5.2],['Lemon Lime Bitter',5.2],['Bottle Juice',5.2],['Powerade',5.5],
   ['Sparkling Mineral Water 500ml',5.5],['Iced Tea',5.5],['Limonata',4.7],['Aranciata',4.7],['Aranciata Rosa',4.7],['Red Bull',4.7],['V Energy',4.7],['WATER',3.5],
   ['KOMPUCHA',6],['BOTTLE GREEN J',7],['MONSTER',5.5]]},
- {id:'sides',label:'SIDES',bg:'#8fe06a',fg:'#122a05',items:[['SIDE CHIP',5],['SIDE SALAD',6],['SIDE SWEET P CHIP',6],['Ad Avo',3],['Bacon',4],['Egg',2.5],['Halloumi',4.5],['Mushroom',4]]},
- {id:'ta',label:'TAKEAWAY',bg:'#2a50d9',fg:'#fff',items:[['Container',0.5],['Bag',0.2]]},
+ {id:'sides',label:'SIDES',bg:'#8fe06a',fg:'#122a05',items:[['1 Hash Brown',3.5],['2 Hash Brown',6],['Roasted Tomato',4],['Spinach',4],['Sauteed Field Mushroom',5],['Kale',4],
+  ['Avocado',5],['Chorizo',5],['Ham',5],['2 Pieces Halloumi',6],['2 Grilled Tenderloin Chicken',7],['Side 1egg',3],['1 Rasher Bacon',3.5],['2 Full Rasher Bacons',6],
+  ['Smoked Salmon',7],['Slow Roast Lamb',8],['SIDE CHIP',5],['SIDE SALAD',6],['SIDE SAUCE',1],['SIDE TUNA',6],['Satchel Sauce',0.5]]},
+ {id:'ta',label:'TAKEAWAY',bg:'#1f4fd8',fg:'#fff',items:[['Plain Croissant TA DEAL',8.5],['TA HAMCHEESE SW',12.5],['BER DEAL',14],['CHEESE TOM SW DEAL',12],['SPIRAL COFFE DEAL',11],
+  ['HC CROISSANT DEAL',12.5],['CHEESE TOM CROIS DEAL',12],['Ad Avo',3],['Honey',0.6],['BANA BREAD COFFEE DEAL',10],['GLUTEN FREE BANA BREAD Deal',11],['MANGO OR NUT BREAD Deal',10],['CHOC CROIiSSANT DEAL',10]]},
 ];
 const PRICE = {}; const CAT_OF = {};
 CATS.forEach(c => c.items.forEach(([n,p]) => { if(!(n in PRICE)){PRICE[n]=p; CAT_OF[n]=c.label;} }));
@@ -468,6 +486,62 @@ function makeJuice(){
   const w = list.map(x => x.toLowerCase()); const said = w.slice(0,-1).join(', ') + ' and ' + w[w.length-1];
   return {kind:'juice', say:'a juice with ' + said, short:'make-your-own juice (' + said + ')', label:'Make your own: ' + list.join(', '), myo:true, accept:[btn], extras:[], qty:1, recipe:myoRecipe(list)};
 }
+/* practise one section of the till */
+const SECTIONS = {
+ allday:{label:'All Day', tab:'allday', items:[['some toast','TOAST'],['a granola bowl','GRANOLA BOWL'],['an acai bowl','Acai Bowl'],['the pancakes','PANCAKE'],
+  ['the smashed avo','Smashed Avo Bruscheta'],['eggs benedict','Egg Benedict'],['the corn fritters','Corn Fritters'],['the Spanish baked eggs','Spanish Baked Eggs'],
+  ['the veggie breakfast','VEGGIE BREAKFAST'],['the big breakfast','Big Eggspresso Breakfast'],['a bacon and egg roll','Bacon Egg Roll'],['a morning wrap','Morning Wrap'],
+  ['eggs on toast','Eggs on Toast'],['the chorizo omelette','Chorizo Omelette w/Toast'],['a feta omelette','Feta Omelette'],['a ham, cheese and tomato omelette','HCTO Omelette w/Toast'],
+  ['the Sun Earth breakfast','SUN EARTH BF'],['the Turkish breakfast','TURKISH BF'],['a BLAT','BLAT'],['the French toast','FRENCH TOAST'],['the green eggs','GREEN EGG']],
+  addons:[['a hash brown','1 Hash Brown'],['two hash browns','2 Hash Brown'],['roasted tomato','Roasted Tomato'],['spinach','Spinach'],['mushrooms','Sauteed Field Mushroom'],
+  ['kale','Kale'],['avocado','Avocado'],['chorizo','Chorizo'],['ham','Ham'],['halloumi','2 Pieces Halloumi'],['chicken','2 Grilled Tenderloin Chicken'],['an extra egg','Side 1egg'],
+  ['a rasher of bacon','1 Rasher Bacon'],['extra bacon','2 Full Rasher Bacons'],['smoked salmon','Smoked Salmon']], addonChance:.35},
+ main:{label:'Main / Lunch Special', tab:'main', items:[['the fish and chips','Fish Chips w/Salad W FETTA'],['the fish special','FISH SPECIAL'],['the linguine','LIGUINI'],
+  ['a noodle bowl','NOODLE BOWL'],['the soup','SOUP'],['the salt and pepper calamari salad','S P CALAMARI W SALAD'],['the Mediterranean salad','MEDITERANEA SALAD'],
+  ['the slow roast lamb salad','Slow Roast Lamb Salad'],['the warm crunch chicken salad','WARM CRUNCH CHICKEN SALAD'],['a beef burger','Beef Burger'],['a chicken burger','CHICKEN BURGER'],
+  ['a mushroom burger','Mushroom Burger'],['the pulled pork special','PULLED PORK SPECIAL'],['the risotto','RISOTTO']],
+  addons:[['a side of chips','SIDE CHIP'],['a side salad','SIDE SALAD'],['extra sauce','SIDE SAUCE']], addonChance:.25},
+ shake:{label:'Milkshakes & Frappe', tab:'shake', items:[['a chocolate milkshake','Chocolate Milk Shake'],['a caramel milkshake','Caramel Milk Shake'],['a vanilla milkshake','Vanilla Milk Shake'],
+  ['a strawberry milkshake','Strawberry Milk Shake'],['a Snickers milkshake','Snickers Milk Shake'],['a Mars milkshake','Mars Milk Shake'],['a Lychee Breeze','Lychee Breeze'],
+  ['a Mango Tango','Mango Tango'],['a Melon Crush','Melon Crush'],['a Tropical Delight','Tropical Delight'],['a kids milkshake','KID MILK SHAKE']]},
+ sw:{label:'Sandwich & Wraps', tab:'sw', items:[['a pumpkin wrap','PUMPKIN WRAP'],['a lamb wrap','Lamb Wrap'],['a smoked salmon wrap','Smoked Salmon Wrap'],['a chicken caesar wrap','Chicken Caesar Wrap'],
+  ['a halloumi wrap','Grilled Halloumi Wrap'],['a chicken schnitzel sandwich','Chicken Schnitzel Sandwich'],['a chicken mango wrap','CHCIKEN MANGO WRAP'],
+  ['a side of chips','SIDE CHIP'],['a side salad','SIDE SALAD'],['some sweet potato chips','SIDE SWEET P CHIP']],
+  addons:[['extra avo','Ad Avo']], addonChance:.3, addonFor:/wrap|sandwich/},
+ juice:{label:'Juices', tab:'juice'},
+ smoothie:{label:'Smoothies', tab:'smoothie', items:[['a buttermilk smoothie','BUTTER MILK SMOOTHIES'],['an Antioxidant smoothie','Antioxidant Smoothie'],['a Green Guru','Green Guru Smoothie'],
+  ['a Breakfast Smoothie','Breakfast Smoothie'],['a protein shake','Protein Shake'],['The Pump','The Pump'],['a Berrylicious','BERRYLICIOUS SMOTHIES'],['a Power Lift','POWER LIFT SMOTHIE']]},
+ counter:{label:'Counter Food & T/A Deal', tab:'counter', items:[['a ham and cheese croissant','Ham Cheese Croissant'],['a cheese and tomato croissant','Cheese Tomato Croisssant'],
+  ['a ham and cheese sandwich','Ham Cheese SW'],['a cheese and tomato sandwich','Cheese Tomato SW'],['a ham, cheese and tomato sandwich','Ham Cheese Tomato SW'],['a pie','Pie'],['a quiche','QUICHE'],
+  ['a filo','Filo'],['a burek','BUREK'],['a spinach roll','Spinal'],['a lamb and beef sausage roll','Lamb Beef Sausage'],['a beef and fennel sausage roll','Beef Fennel Sausage'],
+  ['a frittata','FRILTATA'],['a medium salad','Med Salad'],['a large salad','Lrg Salad'],['a banana bread','BANANA BREAD'],['a pide','PIDE'],['a mango coconut bread','MANGO COCONUT/OTHER SWEET BREAD'],['a lasagne','LASAGNE']],
+  deals:[['plain croissant','Plain Croissant TA DEAL'],['ham and cheese sandwich','TA HAMCHEESE SW'],['bacon and egg roll','BER DEAL'],['cheese and tomato sandwich','CHEESE TOM SW DEAL'],
+  ['spinach roll','SPIRAL COFFE DEAL'],['ham and cheese croissant','HC CROISSANT DEAL'],['cheese and tomato croissant','CHEESE TOM CROIS DEAL'],['banana bread','BANA BREAD COFFEE DEAL'],
+  ['gluten-free banana bread','GLUTEN FREE BANA BREAD Deal'],['mango or nut bread','MANGO OR NUT BREAD Deal'],['chocolate croissant','CHOC CROIiSSANT DEAL']]},
+};
+function makeDealCoffee(){ let c; do { c = makeCoffee('easy'); } while(c.d.grp !== 'cof' || c.large || c.extras.length || c.qty > 1); return c; }
+function makeSectionItems(level, key){
+  const sec = SECTIONS[key];
+  const n = level === 'easy' ? 1 : level === 'normal' ? 1 + (chance(.5) ? 1 : 0) : 2 + Math.floor(Math.random()*3);
+  const items = [], used = new Set();
+  for(let i=0;i<n;i++){
+    if(key === 'juice'){ items.push(makeJuice()); continue; }
+    if(sec.deals && chance(.4)){
+      let d; do { d = rnd(sec.deals); } while(used.has(d[1])); used.add(d[1]);
+      const c = makeDealCoffee();
+      items.push({kind:'deal', say:`the ${d[0]} deal with ${c.say}`, short:`${d[0]} deal (with ${c.short})`, accept:[d[1]], extras:[], qty:1, coffee:c});
+      continue;
+    }
+    let f; do { f = rnd(sec.items); } while(used.has(f[1]) && used.size < sec.items.length); used.add(f[1]);
+    const it = {kind:'other', say:f[0], short:f[0].replace(/^(an?|the|some) /,''), accept:[f[1]], extras:[], qty:1};
+    items.push(it);
+    if(sec.addons && chance(sec.addonChance) && (!sec.addonFor || sec.addonFor.test(f[0]))){
+      const a = rnd(sec.addons); it.say += ' with ' + a[0];
+      items.push({kind:'other', say:null, short:a[0] + ' on the ' + it.short, accept:[a[1]], extras:[], qty:1});
+    }
+  }
+  return items;
+}
 function weighted(){
   const all = Object.values(DRINKS); let t = all.reduce((s,d)=>s+d.w,0), r = Math.random()*t;
   for(const d of all){ if((r -= d.w) < 0) return d; } return all[0];
@@ -513,6 +587,7 @@ function makeCoffee(level){
   return c;
 }
 function makeOrder(level){
+  if(settings.section && settings.section !== 'all' && SECTIONS[settings.section]) return finishOrder(makeSectionItems(level, settings.section));
   const items = [];
   let nCoffee = level === 'easy' ? 1 : level === 'normal' ? (chance(.55) ? 1 : 2) : 2 + Math.floor(Math.random()*3);
   if(settings.food && chance(.2)) nCoffee = 0;
@@ -528,11 +603,14 @@ function makeOrder(level){
     for(let i=0;i<nFood;i++){ let f; do { f = rnd(FOODS); } while(used.has(f[0])); used.add(f[0]);
       items.splice(Math.floor(Math.random()*(items.length+1)), 0, {kind:'other', say:f[0], short:f[0].replace(/^(an?|the|some) /,''), accept:f[1], extras:[], qty:1}); }
   }
+  return finishOrder(items);
+}
+function finishOrder(items){
   let total = 0;
   items.forEach(it => total += it.qty * (PRICE[it.accept[0]] + it.extras.reduce((s,e)=>s+(it.large && MILK_EX.has(e) ? .9 : (PRICE_EX[e]||0)),0)));
   total = Math.round(total*100)/100;
   const open = rnd(['Hi, can I get ','Morning! Could I please have ','Hey, I’ll grab ','Can I have ','Hiya, just ','Hello, could I get ']);
-  const list = items.map(i=>i.say);
+  const list = items.map(i=>i.say).filter(Boolean);
   const joined = list.length > 1 ? list.slice(0,-1).join(', ') + ' and ' + list[list.length-1] : list[0];
   const close = rnd([', please.',', thanks.','. Takeaway, thanks.',', cheers.']);
   const cash = chance(.45);
@@ -626,6 +704,13 @@ function renderSettings(){
   $('#opt-change').setAttribute('aria-pressed', settings.askChange);
   $('#opt-food').setAttribute('aria-pressed', !!settings.food);
   $('#opt-juice').setAttribute('aria-pressed', !!settings.juice);
+  const sec = settings.section || 'all';
+  document.querySelectorAll('[data-section]').forEach(b => {
+    const on = b.dataset.section === sec; b.setAttribute('aria-pressed', on);
+    const c = SECTIONS[b.dataset.section] ? CATS.find(x => x.id === SECTIONS[b.dataset.section].tab) : null;
+    b.style.background = on ? (c ? c.bg : 'var(--ink)') : ''; b.style.color = on ? (c ? c.fg : 'var(--room)') : '';
+  });
+  $('#opt-food').hidden = $('#opt-juice').hidden = sec !== 'all';
 }
 const fmtTime = s => Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2,'0');
 
@@ -642,7 +727,7 @@ function newCustomer(){
     handed.hidden = false;
     handed.innerHTML = `<span class="lbl">They hand you <b>${money(S.order.tender)}</b></span><div class="cash-row" aria-label="${esc(S.order.tenderSay)}">${S.order.pieces.map(pieceHTML).join('')}</div>`; }
   else { chip.className = 'paychip card'; chip.textContent = rnd(['CARD · taps their card','CARD · “Card, thanks”','CARD · holds up their phone']); handed.hidden = true; handed.innerHTML = ''; }
-  const cups = []; S.order.items.forEach(it => { if(it.kind === 'coffee') for(let q=0;q<it.qty;q++) cups.push(it); });
+  const cups = []; S.order.items.forEach(it => { if(it.kind === 'coffee') for(let q=0;q<it.qty;q++) cups.push(it); if(it.kind === 'deal') cups.push(it.coffee); });
   S.juices = S.order.items.filter(it => it.kind === 'juice').map(it => ({item:it, taps:[]}));
   const juiceCards = () => S.juices.map((j,i) => `<div class="jcard"><div class="jglass"><div class="jfill" id="jfill-${i}"></div><div class="jline"></div></div><span class="num">JUICE ${i+1}</span><span class="jname">${esc(j.item.myo ? 'Make your own' : j.item.label)}</span><span class="jml" id="jml-${i}">0 / 400 ml</span><button class="ghost" data-jmake="${i}">Make it</button></div>`).join('');
   $('#cups').innerHTML = (cups.length || S.juices.length) ? cups.map((c,i) => `<div class="cup"><div class="lid"></div><div class="body"><span class="num">${c.large?'LARGE':'REG'} · CUP ${i+1}</span><input id="cup-${i}" aria-label="Cup ${i+1}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="write here"></div></div>`).join('')
@@ -786,7 +871,7 @@ function grade(r){
   got.filter(g=>!g.used).forEach(g => tillRes.push({ok:false, t:`Not ordered: ${g.name}`, h:'Void this line'}));
   // cups
   const cupRes = []; let ci = 0;
-  o.items.forEach(it => { if(it.kind!=='coffee') return; for(let q=0;q<it.qty;q++){ const inp = $('#cup-'+ci); const w = inp ? inp.value : '';
+  o.items.flatMap(it => it.kind === 'deal' ? [it.coffee] : it.kind === 'coffee' ? [it] : []).forEach(it => { for(let q=0;q<it.qty;q++){ const inp = $('#cup-'+ci); const w = inp ? inp.value : '';
     const g = gradeCup(w, it); cupRes.push({ok:g.ok, t:`Cup ${ci+1}: ${w.trim() ? '<code>'+esc(w.trim())+'</code>' : '(blank)'}`, h: g.ok ? (g.why || '') : g.why + ' · should be <code>' + esc(it.cup) + '</code>', raw:true}); ci++; } });
   const juiceRes = (S.juices||[]).map((j,i) => { const g = gradeJuice(j.taps, j.item.recipe);
     return {ok:g.ok, t:'Juice ' + (i+1) + ': ' + j.item.label, h: g.ok ? '' : g.probs.join('; ') + '. Recipe: ' + recipeStr(j.item.recipe)}; });
@@ -863,6 +948,7 @@ document.addEventListener('click', e => {
   if(d.cat){ if(S.mode==='extras'){ toast('Tap Ok to close the extras first'); return; } S.cat = d.cat; renderGrid(); renderTabs(); return; }
   if(d.key){ if(S.buf.length < 8 && !(d.key==='.' && S.buf.includes('.'))) S.buf += d.key; renderDocket(); return; }
   if(d.note){ S.buf = ''; pay('cash', +d.note); return; }
+  if(d.section){ settings.section = d.section; save(); renderSettings(); newCustomer(); return; }
   if(d.level){ settings.level = d.level; save(); renderSettings(); newCustomer(); return; }
   switch(d.act){
     case 'cls': S.buf = ''; renderDocket(); break;
