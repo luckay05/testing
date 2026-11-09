@@ -1109,7 +1109,7 @@ function qtFb(msg, cls){ const f = $('#qt-fb'); f.textContent = msg; f.className
 function qtNext(){
   if(!QT.queue.length) qtBuild();
   QT.cur = QT.queue.shift(); QT.misses = 0; QT.lock = false; QT.t0 = Date.now();
-  S.cat = 'hot'; S.mode = 'grid'; renderGrid(); renderTabs(); qtDraw();
+  S.mode = 'grid'; renderGrid(); renderTabs(); qtDraw();
 }
 function qtDraw(){
   $('#qt-item').textContent = QT.cur;
