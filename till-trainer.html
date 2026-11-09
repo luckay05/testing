@@ -68,16 +68,24 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .nocups{color:var(--muted);font-size:.9rem;margin:0}
 .jcard{width:132px;display:flex;flex-direction:column;align-items:center;gap:4px}
 .jglass{width:58px;height:86px;border:2px solid #cfd8e3;border-top:0;border-radius:0 0 12px 12px;position:relative;overflow:hidden;background:rgba(255,255,255,.04)}
-.jfill{position:absolute;left:0;right:0;bottom:0;height:0;transition:height .2s}
-.jline{position:absolute;left:0;right:0;bottom:80%;border-top:1px dashed var(--gold)}
+.jfill{position:absolute;left:0;right:0;bottom:0}
+.jfill div{flex:none}
+.jline{position:absolute;left:0;right:0;bottom:72.7%;border-top:1px dashed var(--gold)}
 .jname{font-size:.85rem;font-weight:600;text-align:center;line-height:1.2}
 .jml{font-family:var(--f-num);font-size:.75rem;color:var(--muted)}
 .juicer{display:grid;grid-template-columns:104px minmax(0,1fr);gap:14px;align-items:start}
 .glass{position:relative;width:96px;height:260px;border:3px solid #cfd8e3;border-top:0;border-radius:0 0 16px 16px;overflow:hidden;background:rgba(255,255,255,.04)}
 .jlayers{position:absolute;inset:0;display:flex;flex-direction:column-reverse}
 .jlayers div{flex:none;transition:height .15s}
-.line400{position:absolute;left:0;right:0;bottom:80%;border-top:2px dashed var(--gold);z-index:2}
-.line400 span{position:absolute;right:3px;top:-15px;font-family:var(--f-num);font-size:.65rem;color:var(--gold)}
+.jmark{position:absolute;left:0;right:0;border-top:2px dashed var(--gold);z-index:2;opacity:.8}
+.jsteps{display:flex;flex-direction:column;gap:6px;min-width:0}
+.jsteps h4{margin:4px 0 0;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.jsteps h4 span{text-transform:none;letter-spacing:0;font-weight:400}
+.tops{display:flex;flex-wrap:wrap;gap:6px}
+.topb{display:inline-flex;align-items:center;gap:6px;background:#0f1622;border:1px solid var(--frame-2);border-radius:8px;padding:7px 10px;font-size:.88rem}
+.topb i{width:12px;height:12px;border-radius:50%}
+.topb[aria-pressed="true"]{border-color:var(--gold);background:var(--frame-2);color:var(--gold)}
+.jmark span{position:absolute;right:3px;top:-15px;font-family:var(--f-num);font-size:.65rem;color:var(--gold)}
 .mlread{font-family:var(--f-num);text-align:center;margin-top:6px}
 .ings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
 .ing{display:flex;align-items:center;gap:7px;background:#0f1622;border:1px solid var(--frame-2);border-radius:8px;padding:8px;text-align:left;font-size:.88rem;min-width:0}
@@ -469,32 +477,55 @@ const FOODS = [
  ['a lamb and beef sausage roll',['Lamb Beef Sausage']],['a banana bread',['BANANA BREAD']],['a ham and cheese croissant',['Ham Cheese Croissant']],['a spinach roll',['Spinal']],
  ['a pie',['Pie']],['a quiche',['QUICHE']],['a muffin',['Muffin']],['a chocolate croissant',['Choc Croissant/Snail']],['a plain croissant',['Plain Croissant']],
 ];
-/* juice bar: every juice is 400 ml */
-const JUICE_ING = {Apple:'#c9d86a',Orange:'#f59a23',Pineapple:'#f5d33b',Carrot:'#f07a1e',Watermelon:'#f2546a',Strawberry:'#e2334d',Beetroot:'#8e1d4a',
- Celery:'#9bc96a',Cucumber:'#b5dc96',Kale:'#2f7d3a',Spinach:'#3d8f3f',Mint:'#4fc28a',Lemon:'#f7ec6a',Ginger:'#e8c98a',Turmeric:'#e8a10c','Passion Fruit':'#c98a1a'};
+/* juice bar: pieces go in the juicer, then top up with juice to the line */
+const JUICE_ING = {
+ Pineapple:{c:'#f5d33b',step:.5,u:''}, Orange:{c:'#f59a23',step:.5,u:''}, Apple:{c:'#c9d86a',step:1,u:''}, Watermelon:{c:'#f2546a',step:1,u:'wedge'},
+ Carrot:{c:'#f07a1e',step:1,u:''}, 'Big beetroot':{c:'#8e1d4a',step:1,u:''}, 'Small beetroot':{c:'#b0457a',step:1,u:''}, Strawberry:{c:'#e2334d',step:50,u:'g'},
+ Mint:{c:'#4fc28a',step:1,u:'sprig'}, Lemon:{c:'#f7ec6a',step:1,u:'bit'}, Ginger:{c:'#e8c98a',step:1,u:'bit'}, Turmeric:{c:'#e8a10c',step:1,u:'bit'},
+ Celery:{c:'#9bc96a',step:1,u:'stick'}, Cucumber:{c:'#b5dc96',step:.5,u:''}, Kale:{c:'#2f7d3a',step:1,u:'handful'}, Spinach:{c:'#3d8f3f',step:1,u:'handful'},
+ 'Passion Fruit':{c:'#c98a1a',step:1,u:''},
+};
+const TOPS = ['Apple','Orange','Watermelon','Pineapple'];
+const LINES = [400,450,500];
 const JUICES = [
- {label:'Summer Fresh', say:'a Summer Fresh', btn:'SUMMER FRESH', recipe:{Apple:225,Pineapple:150,Mint:25}},
- {label:'Passion', say:'a Passion juice', btn:'PASSION', recipe:{Watermelon:200,Orange:150,'Passion Fruit':50}},
- {label:'Blissful Pink Breeze', say:'a Blissful Pink Breeze', btn:'BLISSFUL PINK', recipe:{Watermelon:175,Strawberry:100,Pineapple:100,Mint:25}},
- {label:'Beauty Boost', say:'a Beauty Boost', btn:'BEAUTY BOOST', recipe:{Carrot:150,Orange:150,Lemon:50,Ginger:25,Turmeric:25}},
- {label:'Energies Power Juice', say:'an Energies Power Juice', btn:'POWER J', recipe:{Orange:150,Carrot:100,Beetroot:100,Lemon:25,Ginger:25}},
- {label:'Super Green', say:'a Super Green', btn:'SUPER GREEN', recipe:{Apple:150,Cucumber:100,Celery:75,Kale:25,Lemon:25,Ginger:25}},
+ {label:'Summer Fresh', say:'a Summer Fresh', btn:'SUMMER FRESH', recipe:{pieces:{Pineapple:[1.5,1.5], Mint:[2,4,'a few']}, top:'Apple', line:450, lineNoIce:500}},
+ {label:'Blissful Pink Breeze', say:'a Blissful Pink Breeze', btn:'BLISSFUL PINK', recipe:{pieces:{Strawberry:[100,100], Pineapple:[1.5,1.5], Mint:[1,1]}, top:'Watermelon', line:400}},
+ {label:'Passion', say:'a Passion juice', btn:'PASSION', recipe:{pieces:{Orange:[1.5,1.5], Mint:[1,3,'some']}, top:'Watermelon', line:400}},
+ {label:'Beauty Boost', say:'a Beauty Boost', btn:'BEAUTY BOOST', recipe:{pieces:{Turmeric:[1,2,'a bit of'], Ginger:[1,2,'a bit of'], Lemon:[1,2,'a bit of'], Carrot:[1,1]}, top:'Orange', line:400}},
+ {label:'Energies Power Juice', say:'an Energies Power Juice', btn:'POWER J', recipe:{beet:true, pieces:{Carrot:[1,1], Lemon:[1,2,'a bit of'], Ginger:[1,2,'a bit of']}, top:'Orange', line:400}},
+ {label:'Super Green', say:'a Super Green', btn:'SUPER GREEN', guess:true, recipe:{pieces:{Celery:[2,2], Cucumber:[.5,.5], Kale:[1,1,'a handful of'], Lemon:[1,2,'a bit of'], Ginger:[1,2,'a bit of']}, top:'Apple', line:400}},
 ];
-const MYO_BASE = ['Apple','Orange','Pineapple','Carrot','Watermelon','Celery','Beetroot'];
-const MYO_ACCENT = {Ginger:25,Lemon:25,Mint:25,Kale:25,Spinach:25,'Passion Fruit':50};
+const MYO = ['Apple','Orange','Pineapple','Carrot','Watermelon','Kale','Spinach','Celery','Beetroot','Ginger','Lemon','Mint','Passion Fruit'];
 const shuffle = a => { a = a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
 function myoRecipe(list){
-  const r = {}; let rest = 400; const bases = list.filter(x => MYO_BASE.includes(x));
-  list.forEach(x => { if(MYO_ACCENT[x]){ r[x] = MYO_ACCENT[x]; rest -= MYO_ACCENT[x]; } });
-  const per = Math.floor(rest/bases.length/25)*25; bases.forEach(b => r[b] = per); r[bases[0]] += rest - per*bases.length;
+  const top = list.find(x => TOPS.includes(x)), r = {pieces:{}, top, line:400};
+  list.forEach(x => {
+    if(x === top) return;
+    if(x === 'Beetroot') r.beet = true;
+    else if(['Ginger','Lemon','Mint'].includes(x)) r.pieces[x] = [1,2,'a bit of'];
+    else if(['Kale','Spinach'].includes(x)) r.pieces[x] = [1,1,'a handful of'];
+    else if(['Pineapple','Orange'].includes(x)) r.pieces[x] = [1,1.5];
+    else if(x === 'Celery') r.pieces[x] = [1,2];
+    else r.pieces[x] = [1,1];
+  });
   return r;
 }
-const recipeStr = r => Object.entries(r).sort((a,b)=>b[1]-a[1]).map(([k,v]) => k + ' ' + v).join(' · ');
+const amtTxt = (k,v) => { const u = JUICE_ING[k].u; const n = Math.abs(v-1) < 1e-9 || !u || u === 'g' ? u : u + 's'; return u === 'g' ? `${v} g ${k.toLowerCase()}` : `${v}${n ? ' ' + n : ''} ${k.toLowerCase()}`; };
+function recipeStr(r, noIce){
+  const parts = [];
+  if(r.beet) parts.push('1 big or 2 small beetroot');
+  Object.entries(r.pieces).forEach(([k,[lo,hi,lab]]) => parts.push(lab ? `${lab} ${k.toLowerCase()}` : lo === hi ? amtTxt(k,lo) : `${lo}–${amtTxt(k,hi)}`));
+  const line = noIce === undefined && r.lineNoIce ? `${r.line} ml (${r.lineNoIce} ml no ice)` : `${noIce && r.lineNoIce ? r.lineNoIce : r.line} ml`;
+  parts.push(`top up with ${r.top.toLowerCase()} to ${line}`);
+  return parts.join(' · ');
+}
 function makeJuice(){
-  if(chance(.65)){ const j = rnd(JUICES); return {kind:'juice', say:j.say, short:j.label, label:j.label, accept:[j.btn], extras:[], qty:1, recipe:{...j.recipe}}; }
-  const n = rnd([3,3,3,4,4,5]); const nb = Math.min(n, 2 + Math.floor(Math.random()*(n-1)));
-  const list = [...shuffle(MYO_BASE).slice(0,nb), ...shuffle(Object.keys(MYO_ACCENT)).slice(0,n-nb)];
-  const btn = n === 3 ? 'MAKE YOUR OWN 3' : n === 4 ? 'MAKEYOUR OWN 4' : 'MAKE YOU OWN 5 OR MORE';
+  if(chance(.65)){ const j = rnd(JUICES); const noIce = !!j.recipe.lineNoIce && chance(.35);
+    return {kind:'juice', say:j.say + (noIce ? ' with no ice' : ''), short:j.label + (noIce ? ' (no ice)' : ''), label:j.label + (noIce ? ' (no ice)' : ''), noIce, accept:[j.btn], extras:[], qty:1, recipe:j.recipe}; }
+  const n = rnd([3,3,3,4,4,5]); let list = shuffle(MYO).slice(0,n);
+  if(!list.some(x => TOPS.includes(x))) list[Math.floor(Math.random()*n)] = rnd(TOPS);
+  list = [...new Set(list)];
+  const btn = list.length <= 3 ? 'MAKE YOUR OWN 3' : list.length === 4 ? 'MAKEYOUR OWN 4' : 'MAKE YOU OWN 5 OR MORE';
   const w = list.map(x => x.toLowerCase()); const said = w.slice(0,-1).join(', ') + ' and ' + w[w.length-1];
   return {kind:'juice', say:'a juice with ' + said, short:'make-your-own juice (' + said + ')', label:'Make your own: ' + list.join(', '), myo:true, accept:[btn], extras:[], qty:1, recipe:myoRecipe(list)};
 }
@@ -740,8 +771,8 @@ function newCustomer(){
     handed.innerHTML = `<span class="lbl">They hand you <b>${money(S.order.tender)}</b></span><div class="cash-row" aria-label="${esc(S.order.tenderSay)}">${S.order.pieces.map(pieceHTML).join('')}</div>`; }
   else { chip.className = 'paychip card'; chip.textContent = rnd(['CARD · taps their card','CARD · “Card, thanks”','CARD · holds up their phone']); handed.hidden = true; handed.innerHTML = ''; }
   const cups = []; S.order.items.forEach(it => { if(it.kind === 'coffee') for(let q=0;q<it.qty;q++) cups.push(it); if(it.kind === 'deal') cups.push(it.coffee); });
-  S.juices = S.order.items.filter(it => it.kind === 'juice').map(it => ({item:it, taps:[]}));
-  const juiceCards = () => S.juices.map((j,i) => `<div class="jcard"><div class="jglass"><div class="jfill" id="jfill-${i}"></div><div class="jline"></div></div><span class="num">JUICE ${i+1}</span><span class="jname">${esc(j.item.myo ? 'Make your own' : j.item.label)}</span><span class="jml" id="jml-${i}">0 / 400 ml</span><button class="ghost" data-jmake="${i}">Make it</button></div>`).join('');
+  S.juices = S.order.items.filter(it => it.kind === 'juice').map(it => ({item:it, taps:[], top:null, line:null}));
+  const juiceCards = () => S.juices.map((j,i) => `<div class="jcard"><div class="jglass"><div class="jfill" id="jfill-${i}" style="height:100%;display:flex;flex-direction:column-reverse"></div><div class="jline"></div></div><span class="num">JUICE ${i+1}</span><span class="jname">${esc(j.item.myo ? 'Make your own' : j.item.label)}</span><span class="jml" id="jml-${i}">Not made yet</span><button class="ghost" data-jmake="${i}">Make it</button></div>`).join('');
   $('#cups').innerHTML = (cups.length || S.juices.length) ? cups.map((c,i) => `<div class="cup"><div class="lid"></div><div class="body"><span class="num">${c.large?'LARGE':'REG'} · CUP ${i+1}</span><input id="cup-${i}" aria-label="Cup ${i+1}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="write here"></div></div>`).join('')
 + juiceCards()
     : '<p class="nocups">No hot coffees or juices in this order.</p>';
@@ -799,45 +830,69 @@ function askChange(result){
 }
 
 /* ---------- juicer ---------- */
-const mixOf = taps => { const m = {}; taps.forEach(k => m[k] = (m[k]||0) + 25); return m; };
+const CAP = 550; // the glass drawing holds 550 ml
+const countsOf = j => { const m = {}; j.taps.forEach(k => m[k] = Math.round(((m[k]||0) + JUICE_ING[k].step)*10)/10); return m; };
+function glassLayers(j){
+  const bands = j.taps.map(k => `<div style="height:3.5%;background:${JUICE_ING[k].c}"></div>`).slice(0,12);
+  const used = Math.min(12, j.taps.length) * 3.5;
+  if(j.top && j.line){ const h = Math.max(0, j.line/CAP*100 - used); bands.push(`<div style="height:${h}%;background:${JUICE_ING[j.top].c};opacity:.85"></div>`); }
+  return bands.join('');
+}
 function updateJuiceCard(i){
-  const j = S.juices[i], m = mixOf(j.taps), tot = j.taps.length*25;
-  const top = Object.entries(m).sort((a,b)=>b[1]-a[1])[0];
-  const f = $('#jfill-'+i); if(f){ f.style.height = Math.min(100, tot/500*100) + '%'; f.style.background = top ? JUICE_ING[top[0]] : 'transparent'; }
-  const t = $('#jml-'+i); if(t) t.textContent = tot + ' / 400 ml';
+  const j = S.juices[i];
+  const f = $('#jfill-'+i); if(f) f.innerHTML = glassLayers(j);
+  const t = $('#jml-'+i); if(t) t.textContent = j.top && j.line ? `${j.line} ml · ${j.top.toLowerCase()}` : j.taps.length ? `${j.taps.length} in, not topped up` : 'Not made yet';
 }
 function openJuicer(i){
   const j = S.juices[i]; const keys = Object.keys(JUICE_ING);
   openModal(`<h2>Juice ${i+1}: ${esc(j.item.myo ? 'Make your own' : j.item.label)}</h2>
-   <p class="note">They asked for ${esc(j.item.say)}. Fill to the 400 ml line. Each tap adds 25 ml.</p>
+   <p class="note">They asked for ${esc(j.item.say.replace(/,$/,''))}.</p>
    <div class="juicer">
-     <div><div class="glass"><div class="jlayers" id="jlayers"></div><div class="line400"><span>400</span></div></div><div class="mlread" id="mlread"></div></div>
-     <div class="ings">${keys.map((k,n) => `<button class="ing" data-ing="${esc(k)}"><i style="background:${JUICE_ING[k]}"></i><span>${esc(k)}</span><b id="ingml-${n}">0</b></button>`).join('')}</div>
+     <div><div class="glass"><div class="jlayers" id="jlayers"></div>${LINES.map(l => `<div class="jmark" style="bottom:${l/CAP*100}%"><span>${l}</span></div>`).join('')}</div><div class="mlread" id="mlread"></div></div>
+     <div class="jsteps">
+       <h4>1 · Into the juicer <span>tap to add</span></h4>
+       <div class="ings">${keys.map((k,n) => `<button class="ing" data-ing="${esc(k)}"><i style="background:${JUICE_ING[k].c}"></i><span>${esc(k)}</span><b id="ingct-${n}"></b></button>`).join('')}</div>
+       <h4>2 · Top up with</h4>
+       <div class="tops">${TOPS.map(k => `<button class="topb" data-top="${k}"><i style="background:${JUICE_ING[k].c}"></i>${k}</button>`).join('')}</div>
+       <h4>3 · Up to the line</h4>
+       <div class="tops">${LINES.map(l => `<button class="topb" data-line="${l}">${l} ml</button>`).join('')}</div>
+     </div>
    </div>
-   <div class="rec" id="jrec" hidden><b>Recipe (ml):</b> ${esc(recipeStr(j.item.recipe))}</div>
+   <div class="rec" id="jrec" hidden><b>Recipe:</b> ${esc(recipeStr(j.item.recipe, !!j.item.noIce))}</div>
    <div class="row"><button class="big alt" id="j-undo">Undo</button><button class="big alt" id="j-empty">Empty</button><button class="big alt" id="j-rec">Show recipe</button><button class="big" id="j-done">Done</button></div>`);
+  const sheet = $('#sheet');
   const draw = () => {
-    const m = mixOf(j.taps), tot = j.taps.length*25, order = [...new Set(j.taps)];
-    $('#jlayers').innerHTML = order.map(k => `<div style="height:${m[k]/500*100}%;background:${JUICE_ING[k]}"></div>`).join('');
-    $('#mlread').innerHTML = `<b style="color:${tot===400?'var(--good)':tot>400?'var(--bad)':'var(--ink)'}">${tot}</b> / 400 ml`;
-    keys.forEach((k,n) => { const b = $('#ingml-'+n); b.textContent = m[k] || 0; b.parentElement.classList.toggle('has', !!m[k]); });
+    const m = countsOf(j);
+    $('#jlayers').innerHTML = glassLayers(j);
+    $('#mlread').innerHTML = j.top && j.line ? `<b>${j.line}</b> ml` : `<span class="note">${j.taps.length} in</span>`;
+    keys.forEach((k,n) => { const b = $('#ingct-'+n); b.textContent = m[k] ? (JUICE_ING[k].u === 'g' ? m[k] + 'g' : m[k]) : ''; b.parentElement.classList.toggle('has', !!m[k]); });
+    sheet.querySelectorAll('[data-top]').forEach(b => b.setAttribute('aria-pressed', b.dataset.top === j.top));
+    sheet.querySelectorAll('[data-line]').forEach(b => b.setAttribute('aria-pressed', +b.dataset.line === j.line));
     updateJuiceCard(i);
   };
   draw();
-  $('#sheet').querySelectorAll('[data-ing]').forEach(b => b.addEventListener('click', () => {
-    if(j.taps.length*25 >= 500){ toast('The cup is overflowing. Undo or Empty it.'); return; }
-    j.taps.push(b.dataset.ing); draw(); }));
+  sheet.querySelectorAll('[data-ing]').forEach(b => b.addEventListener('click', () => { if(j.taps.length >= 20){ toast('That’s a lot of fruit. Undo or Empty it.'); return; } j.taps.push(b.dataset.ing); draw(); }));
+  sheet.querySelectorAll('[data-top]').forEach(b => b.addEventListener('click', () => { j.top = j.top === b.dataset.top ? null : b.dataset.top; draw(); }));
+  sheet.querySelectorAll('[data-line]').forEach(b => b.addEventListener('click', () => { j.line = j.line === +b.dataset.line ? null : +b.dataset.line; draw(); }));
   $('#j-undo').addEventListener('click', () => { j.taps.pop(); draw(); });
-  $('#j-empty').addEventListener('click', () => { j.taps.length = 0; draw(); });
+  $('#j-empty').addEventListener('click', () => { j.taps.length = 0; j.top = null; j.line = null; draw(); });
   $('#j-rec').addEventListener('click', e => { const r = $('#jrec'); r.hidden = !r.hidden; e.target.textContent = r.hidden ? 'Show recipe' : 'Hide recipe'; });
   $('#j-done').addEventListener('click', closeModal);
 }
-function gradeJuice(taps, recipe){
-  const m = mixOf(taps), tot = taps.length*25, probs = [];
-  if(!tot) return {ok:false, probs:['Not made']};
-  Object.keys(m).forEach(k => { if(!recipe[k]) probs.push('no ' + k + ' (you added ' + m[k] + ' ml)'); });
-  Object.entries(recipe).forEach(([k,v]) => { const g = m[k]||0; if(!g) probs.push('missing ' + k); else if(Math.abs(g-v) > 25) probs.push(k + ' ' + g + ' ml, should be about ' + v); });
-  if(tot !== 400) probs.push('total ' + tot + ' ml, should be 400');
+function gradeJuice(j){
+  const r = j.item.recipe, probs = [], cnt = countsOf(j);
+  if(!j.taps.length && !j.top) return {ok:false, probs:['Not made']};
+  if(r.beet){ const B = cnt['Big beetroot']||0, Sm = cnt['Small beetroot']||0;
+    if(!((B === 1 && Sm === 0) || (B === 0 && Sm === 2))) probs.push(`beetroot should be 1 big or 2 small (you put ${B} big, ${Sm} small)`);
+    delete cnt['Big beetroot']; delete cnt['Small beetroot']; }
+  Object.entries(r.pieces).forEach(([k,[lo,hi]]) => { const g = cnt[k]||0;
+    if(!g) probs.push('missing ' + k.toLowerCase());
+    else if(g < lo || g > hi) probs.push(`${amtTxt(k,g)}, should be ${lo === hi ? lo : lo + '–' + hi}`);
+    delete cnt[k]; });
+  Object.keys(cnt).forEach(k => probs.push(k === r.top ? `${k.toLowerCase()} is only the top-up here, no pieces` : `no ${k.toLowerCase()} in this one`));
+  if(j.top !== r.top) probs.push(j.top ? `topped up with ${j.top.toLowerCase()}, should be ${r.top.toLowerCase()}` : `not topped up (use ${r.top.toLowerCase()})`);
+  const want = j.item.noIce && r.lineNoIce ? r.lineNoIce : r.line;
+  if(j.line !== want) probs.push(j.line ? `filled to ${j.line} ml, should be ${want} ml` : `fill to the ${want} ml line`);
   return {ok: !probs.length, probs};
 }
 
@@ -885,8 +940,8 @@ function grade(r){
   const cupRes = []; let ci = 0;
   o.items.flatMap(it => it.kind === 'deal' ? [it.coffee] : it.kind === 'coffee' ? [it] : []).forEach(it => { for(let q=0;q<it.qty;q++){ const inp = $('#cup-'+ci); const w = inp ? inp.value : '';
     const g = gradeCup(w, it); cupRes.push({ok:g.ok, t:`Cup ${ci+1}: ${w.trim() ? '<code>'+esc(w.trim())+'</code>' : '(blank)'}`, h: g.ok ? (g.why || '') : g.why + ' · should be <code>' + esc(it.cup) + '</code>', raw:true}); ci++; } });
-  const juiceRes = (S.juices||[]).map((j,i) => { const g = gradeJuice(j.taps, j.item.recipe);
-    return {ok:g.ok, t:'Juice ' + (i+1) + ': ' + j.item.label, h: g.ok ? '' : g.probs.join('; ') + '. Recipe: ' + recipeStr(j.item.recipe)}; });
+  const juiceRes = (S.juices||[]).map((j,i) => { const g = gradeJuice(j);
+    return {ok:g.ok, t:'Juice ' + (i+1) + ': ' + j.item.label, h: g.ok ? '' : g.probs.join('; ') + '. Recipe: ' + recipeStr(j.item.recipe, !!j.item.noIce)}; });
   // payment
   const payRes = [];
   const wantCash = o.cash;
@@ -933,8 +988,8 @@ function cheat(){
     <div><h3>Drinks</h3><table>${row('Cappuccino','C')}${row('Latte','L')}${row('Flat white','F')}${row('Hot chocolate','HC')}${row('Mocha','Moca')}${row('Chai latte','Chai')}${row('Long black','LB')}${row('Short black','SB')}${row('Piccolo latte','Pic')}${row('Beetroot latte','BeetL')}${row('Golden latte','GoldL')}</table></div>
     <div><h3>Extras</h3><table>${row('Strong','St')}${row('Skim','S')}${row('Soy','Y')}${row('Almond','A')}${row('Oat','O')}${row('Lactose free','Lac')}${row('Decaf','Dec')}${row('Caramel','Ca')}${row('Vanilla','Va')}${row('Hazelnut','Ha')}${row('Sugar (1)','1S')}${row('Equal (1)','1E')}</table></div>
    </div></div>
-   <div class="cheat"><h3>Juices · always 400 ml</h3><table>${JUICES.map(j => `<tr><td>${j.label}<br><span class="note">${j.btn}</span></td><td style="font-size:.85rem">${recipeStr(j.recipe)}</td></tr>`).join('')}</table>
-   <p class="note">Make your own: ginger, lemon, mint, kale and spinach are 25 ml each, passion fruit 50 ml. Split the rest evenly between the fruit and veg. 3 items → MAKE YOUR OWN 3, 4 → MAKEYOUR OWN 4, 5+ → MAKE YOU OWN 5 OR MORE.</p></div>
+   <div class="cheat"><h3>Juices · pieces in, then top up</h3><table>${JUICES.map(j => `<tr><td>${j.label}<br><span class="note">${j.btn}</span></td><td style="font-size:.85rem">${recipeStr(j.recipe)}${j.guess ? ' <i>(my guess)</i>' : ''}</td></tr>`).join('')}</table>
+   <p class="note">Make your own (my guess): top up to 400 ml with the first juice fruit they say (apple, orange, watermelon or pineapple). One piece of everything else; a bit of ginger, lemon or mint; a handful of kale or spinach; beetroot is 1 big or 2 small. 3 items → MAKE YOUR OWN 3, 4 → MAKEYOUR OWN 4, 5+ → MAKE YOU OWN 5 OR MORE.</p></div>
    <p class="note">On the till: regular takeaway coffee → <b>REG TA COFFE</b> (or the drink’s own button), large → <b>LRG TA COFFEE</b>. Mocha, beetroot and golden use the <b>MOC. MAT. GOLD. BEET</b> buttons; hot chocolate uses <b>HOT CHOC</b>. Then tap the line and <b>Extra</b> for milk, syrup, Decaf, and Extra Shot for “strong”. Milk swaps are $0.60 on a regular, $0.90 on a large. Skim, sugar and Equal are free so they only go on the cup.</p>
    <div class="row"><button class="big alt" id="btn-close">Close</button></div>`);
   $('#btn-close').addEventListener('click', closeModal);
