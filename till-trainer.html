@@ -114,6 +114,12 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .qt-stats{font-family:var(--f-num);font-size:.78rem;color:var(--muted)}
 .qt-stats b{color:var(--ink);font-weight:600}
 .qt-fb{margin:0;font-size:.92rem;min-height:1.3em}
+.qt-btns{display:flex;gap:6px}
+.qt-wtable{width:100%;border-collapse:collapse;font-size:.88rem;font-variant-numeric:tabular-nums}
+.qt-wtable th{text-align:left;font-weight:500;color:var(--muted);font-size:.75rem;padding:3px 4px}
+.qt-wtable td{padding:4px;border-top:1px solid var(--frame-2)}
+.qt-wtable td:nth-child(n+2),.qt-wtable th:nth-child(n+2){text-align:right;font-family:var(--f-num)}
+.qt-wtable .bad{color:var(--bad)}
 .qt-fb.good{color:var(--good)} .qt-fb.bad{color:var(--bad)}
 .b.qt-hit{outline:4px solid var(--good);outline-offset:-4px}
 .b.qt-miss{outline:4px solid var(--bad);outline-offset:-4px;animation:shake .35s}
@@ -300,9 +306,10 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
   </div>
   <section class="qt" id="qt" hidden>
     <div class="qt-top"><span class="qt-lbl">Tap this button</span><b id="qt-item"></b><button class="ghost" id="qt-skip">Skip</button><button class="ghost" id="qt-stop">Stop</button></div>
-    <div class="qt-row"><span class="qt-stats" id="qt-stats"></span><button class="ghost" id="qt-pick"></button></div>
+    <div class="qt-row"><span class="qt-stats" id="qt-stats"></span><span class="qt-btns"><button class="ghost" id="qt-weakbtn">Weak spots ▼</button><button class="ghost" id="qt-pick"></button></span></div>
     <p class="qt-fb" id="qt-fb" aria-live="polite">Find it on the till below and tap it.</p>
     <div class="fc-pick" id="qt-chips" hidden></div>
+    <div class="fc-pick" id="qt-weak" hidden></div>
   </section>
   <section class="counter">
     <div class="customer">
@@ -1101,15 +1108,50 @@ function fcDrawPickOnly(){
 $('#btn-fc').addEventListener('click', () => { if(!FC.queue.length && !FC.current) fcBuild(); fcNext(); });
 
 /* ---------- quick tap: find the button on the till ---------- */
-const QT = {on:false, tabs:new Set(DRINK_TABS), pick:false, queue:[], cur:null, t0:0, misses:0, lock:false, done:0, first:0, times:[], streak:0, best:0};
+const QT = {on:false, tabs:new Set(DRINK_TABS), pick:false, weak:false, again:[], recent:[], cur:null, t0:0, misses:0, lock:false, done:0, first:0, times:[], streak:0, best:0};
 try { const t = JSON.parse(localStorage.getItem('tt-qt-tabs') || 'null'); if(Array.isArray(t) && t.length) QT.tabs = new Set(t.filter(id => CATS.some(c => c.id === id))); } catch(e){}
-function qtBuild(){ if(!QT.tabs.size) QT.tabs = new Set(DRINK_TABS); QT.queue = shuffle(Object.keys(TABS_OF).filter(n => [...TABS_OF[n]].some(t => QT.tabs.has(t)))); }
+/* Each item remembers how you do on it (saved in this browser):
+   n = times seen, t = smoothed time in seconds, e = smoothed miss rate 0..1 */
+let QSTAT = {};
+try { QSTAT = JSON.parse(localStorage.getItem('tt-qt-stats') || '{}') || {}; } catch(e){ QSTAT = {}; }
+const qtSave = () => { try { localStorage.setItem('tt-qt-stats', JSON.stringify(QSTAT)); } catch(e){} };
+function qtPool(){ if(!QT.tabs.size) QT.tabs = new Set(DRINK_TABS); return Object.keys(TABS_OF).filter(n => [...TABS_OF[n]].some(t => QT.tabs.has(t))); }
+function qtMedian(pool){ const ts = pool.map(n => QSTAT[n]).filter(x => x && x.n).map(x => x.t).sort((a,b)=>a-b); return ts.length ? ts[Math.floor(ts.length/2)] : 3; }
+function qtWeight(n, med){
+  const x = QSTAT[n];
+  if(!x || !x.n) return 2.5;                       // not seen yet: show it soon
+  let w = 1 + 6*x.e + 3*Math.max(0, x.t/med - 1);  // misses and slowness push it up
+  if(x.n >= 3 && x.e < .1 && x.t < med*.85) w = .35; // you've got this one
+  return Math.min(10, Math.max(.25, w));
+}
+function qtBuild(){ QT.again = []; QT.recent = []; }
 function qtSetTabs(ids){ QT.tabs = new Set(ids); try { localStorage.setItem('tt-qt-tabs', JSON.stringify(ids)); } catch(e){} qtBuild(); qtNext(); }
 function qtFb(msg, cls){ const f = $('#qt-fb'); f.textContent = msg; f.className = 'qt-fb ' + (cls||''); }
+function qtPick(){
+  QT.again.forEach(a => a.in--);
+  const due = QT.again.findIndex(a => a.in <= 0);
+  if(due >= 0) return QT.again.splice(due,1)[0].name;
+  const pool = qtPool(), med = qtMedian(pool);
+  const cand = pool.filter(n => !QT.recent.includes(n));
+  const list = cand.length ? cand : pool;
+  const ws = list.map(n => qtWeight(n, med)); let r = Math.random() * ws.reduce((a,b)=>a+b,0);
+  for(let i=0;i<list.length;i++){ if((r -= ws[i]) < 0) return list[i]; }
+  return list[list.length-1];
+}
 function qtNext(){
-  if(!QT.queue.length) qtBuild();
-  QT.cur = QT.queue.shift(); QT.misses = 0; QT.lock = false; QT.t0 = Date.now();
+  QT.cur = qtPick(); QT.recent.push(QT.cur); if(QT.recent.length > 3) QT.recent.shift();
+  QT.misses = 0; QT.lock = false; QT.t0 = Date.now();
   S.mode = 'grid'; renderGrid(); renderTabs(); qtDraw();
+}
+function qtRecord(name, secs, missed){
+  const x = QSTAT[name] || {n:0, t:secs, e:missed ? 1 : 0};
+  const k = x.n ? .4 : 1;  // newer tries count more
+  x.t = x.t*(1-k) + Math.min(secs, 30)*k; x.e = x.e*(1-k) + (missed ? 1 : 0)*k; x.n++;
+  QSTAT[name] = x; qtSave();
+}
+function qtWeakList(){
+  const pool = qtPool(), med = qtMedian(pool);
+  return pool.filter(n => QSTAT[n] && QSTAT[n].n).map(n => ({...QSTAT[n], name:n, w:qtWeight(n, med)})).sort((a,b) => b.w - a.w);
 }
 function qtDraw(){
   $('#qt-item').textContent = QT.cur;
@@ -1120,14 +1162,24 @@ function qtDraw(){
   const ch = $('#qt-chips'); ch.hidden = !QT.pick;
   ch.innerHTML = `<div class="row"><button class="ghost" data-qtpreset="drinks">Drinks</button><button class="ghost" data-qtpreset="food">Food</button><button class="ghost" data-qtpreset="all">All</button></div>
     <div class="fc-chips">${CATS.map(c => { const on = QT.tabs.has(c.id); return `<button class="fc-chip" data-qttab="${c.id}" aria-pressed="${on}" style="${on ? `background:${c.bg};color:${c.fg};border-color:transparent` : ''}">${on ? '✓ ' : ''}${esc(c.label)}</button>`; }).join('')}</div>`;
+  const pool = qtPool(), seen = pool.filter(n => QSTAT[n] && QSTAT[n].n).length;
+  const weak = qtWeakList(), med = qtMedian(pool);
+  const mastered = weak.filter(x => x.w <= .35).length;
+  $('#qt-weakbtn').textContent = `Weak spots ${QT.weak ? '▲' : '▼'}`;
+  const wk = $('#qt-weak'); wk.hidden = !QT.weak;
+  wk.innerHTML = `<p class="note">Seen ${seen} of ${pool.length} · got the hang of ${mastered}. Slow or missed items come up more often.</p>` +
+    (weak.length ? `<table class="qt-wtable"><thead><tr><th>Button</th><th>Time</th><th>Misses</th></tr></thead><tbody>${weak.slice(0,8).map(x =>
+      `<tr><td>${esc(x.name)}</td><td class="${x.t > med*1.2 ? 'bad' : ''}">${x.t.toFixed(1)}s</td><td class="${x.e > .25 ? 'bad' : ''}">${Math.round(x.e*100)}%</td></tr>`).join('')}</tbody></table>` : '<p class="note">Tap a few items first.</p>') +
+    `<div class="row"><button class="ghost" id="qt-reset">Reset my progress</button></div>`;
 }
 function qtTap(name, btn){
   if(QT.lock) return;
   if(name === QT.cur){
     QT.lock = true;
     const t = (Date.now() - QT.t0)/1000; QT.done++; QT.times.push(t); if(QT.times.length > 20) QT.times.shift();
+    qtRecord(QT.cur, t, QT.misses > 0);
     if(!QT.misses){ QT.first++; QT.streak++; QT.best = Math.max(QT.best, QT.streak); }
-    else { QT.streak = 0; QT.queue.splice(Math.min(3, QT.queue.length), 0, QT.cur); }
+    else { QT.streak = 0; QT.again.push({name:QT.cur, in:4}); }
     btn.classList.add('qt-hit'); qtFb('✓ ' + t.toFixed(1) + 's', 'good');
     setTimeout(qtNext, 350);
   } else {
@@ -1151,7 +1203,12 @@ function qtStop(){
 }
 $('#btn-qt').addEventListener('click', () => QT.on ? qtStop() : qtStart());
 $('#qt-stop').addEventListener('click', qtStop);
-$('#qt-skip').addEventListener('click', () => { QT.streak = 0; QT.queue.splice(Math.min(3, QT.queue.length), 0, QT.cur); qtNext(); qtFb('Skipped. It’ll come back soon.'); });
+$('#qt-skip').addEventListener('click', () => { QT.streak = 0; qtRecord(QT.cur, 15, true); QT.again.push({name:QT.cur, in:4}); qtNext(); qtFb('Skipped. It’ll come back soon.'); });
+$('#qt-weakbtn').addEventListener('click', () => { QT.weak = !QT.weak; qtDraw(); });
+let qtResetArmed = false;
+$('#qt-weak').addEventListener('click', e => { if(e.target.id !== 'qt-reset') return;
+  if(!qtResetArmed){ qtResetArmed = true; e.target.textContent = 'Tap again to wipe it'; setTimeout(() => { qtResetArmed = false; }, 3000); return; }
+  qtResetArmed = false; QSTAT = {}; qtSave(); qtDraw(); toast('Progress reset'); });
 $('#qt-pick').addEventListener('click', () => { QT.pick = !QT.pick; qtDraw(); });
 $('#qt-chips').addEventListener('click', e => {
   const b = e.target.closest('button'); if(!b) return;
