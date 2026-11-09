@@ -105,6 +105,9 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .fc-tabs .fc-right{outline:3px solid var(--good);outline-offset:-3px}
 .fc-tabs .fc-wrong{outline:3px solid var(--bad);outline-offset:-3px;opacity:.6}
 .fc-fb{min-height:1.5em}
+.fc-pick{background:#0f1622;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.fc-chips{display:flex;flex-wrap:wrap;gap:6px}
+.fc-chip{border:1px solid var(--frame-2);background:var(--frame);border-radius:6px;padding:6px 9px;font-family:var(--f-btn);font-weight:700;font-size:.88rem;letter-spacing:.02em}
 .fc-fb .good{color:var(--good)} .fc-fb .bad{color:var(--bad)}
 @media (prefers-reduced-motion:reduce){.fc-card{transition:none}}
 @media (max-width:480px){.juicer{grid-template-columns:72px minmax(0,1fr);gap:10px}.glass{width:70px;height:230px}.ing{padding:7px 6px;gap:5px;font-size:.8rem}.ing i{width:10px;height:10px}.mlread{font-size:.8rem}}
@@ -1005,9 +1008,15 @@ function otherTypes(){
 /* ---------- flashcards: which tab is it under? ---------- */
 const DRINK_TABS = ['hot','cold','tea','shake','juice','smoothie','drinks','alcohol'];
 const TABS_OF = {}; CATS.forEach(c => c.items.forEach(([n]) => { (TABS_OF[n] = TABS_OF[n] || new Set()).add(c.id); }));
-const FC = {deck:'drinks', queue:[], n:0, right:0, streak:0, best:0, answered:false, current:null};
+const FC = {tabs:new Set(DRINK_TABS), pick:false, queue:[], n:0, right:0, streak:0, best:0, answered:false, current:null};
+try { const t = JSON.parse(localStorage.getItem('tt-fc-tabs') || 'null'); if(Array.isArray(t) && t.length) FC.tabs = new Set(t.filter(id => CATS.some(c => c.id === id))); } catch(e){}
+const FOOD_TABS = CATS.map(c => c.id).filter(id => !DRINK_TABS.includes(id));
+function fcSetTabs(ids){ if(!ids.length){ toast('Pick at least one section'); return; }
+  FC.tabs = new Set(ids); try { localStorage.setItem('tt-fc-tabs', JSON.stringify(ids)); } catch(e){}
+  fcBuild(); fcNext(); }
 function fcBuild(){
-  const names = Object.keys(TABS_OF).filter(n => FC.deck === 'all' || [...TABS_OF[n]].some(t => DRINK_TABS.includes(t)));
+  if(!FC.tabs.size) FC.tabs = new Set(DRINK_TABS);
+  const names = Object.keys(TABS_OF).filter(n => [...TABS_OF[n]].some(t => FC.tabs.has(t)));
   FC.queue = shuffle(names); FC.n = 0; FC.right = 0; FC.streak = 0;
 }
 function fcNext(){
@@ -1016,9 +1025,16 @@ function fcNext(){
   fcDraw();
 }
 function fcDraw(){
-  const tabs = FC.deck === 'all' ? CATS : CATS.filter(c => DRINK_TABS.includes(c.id));
+  const tabs = CATS;
+  const chosen = CATS.filter(c => FC.tabs.has(c.id));
   openModal(`<div class="row" style="justify-content:space-between;align-items:baseline"><h2>Which tab?</h2>
-     <div class="seg" role="group" aria-label="Deck"><button data-fcdeck="drinks" aria-pressed="${FC.deck==='drinks'}">Drinks</button><button data-fcdeck="all" aria-pressed="${FC.deck==='all'}">Everything</button></div></div>
+     <button class="pill" id="fc-pick" aria-expanded="${FC.pick}">Sections (${chosen.length}) ${FC.pick ? '▲' : '▼'}</button></div>
+   <p class="note" style="margin-top:-6px">Testing: ${esc(chosen.length === CATS.length ? 'every section' : chosen.map(c => c.label).join(', '))}</p>
+   <div class="fc-pick" ${FC.pick ? '' : 'hidden'}>
+     <div class="row"><button class="ghost" data-fcpreset="drinks">Drinks</button><button class="ghost" data-fcpreset="food">Food</button><button class="ghost" data-fcpreset="all">All</button><button class="ghost" data-fcpreset="none">Clear</button></div>
+     <div class="fc-chips">${CATS.map(c => { const on = FC.tabs.has(c.id); return `<button class="fc-chip" data-fctab="${c.id}" aria-pressed="${on}" style="${on ? `background:${c.bg};color:${c.fg};border-color:transparent` : ''}">${on ? '✓ ' : ''}${esc(c.label)}</button>`; }).join('')}</div>
+     <p class="note">Tap sections to add or remove them. The deck restarts when you change it.</p>
+   </div>
    <div class="sum"><span>Card</span><b>${FC.n}</b><span>Right</span><b>${FC.right} / ${FC.n - (FC.answered?0:1)}</b><span>Streak</span><b>${FC.streak} (best ${FC.best})</b><span>Left in deck</span><b>${FC.queue.length}</b></div>
    <div class="fc-card" id="fc-card"><span class="fc-hint">Find this button</span><b>${esc(FC.current)}</b></div>
    <div class="fc-tabs">${tabs.map(c => `<button class="b" style="background:${c.bg};color:${c.fg}" data-fc="${c.id}">${esc(c.label)}</button>`).join('')}</div>
@@ -1026,14 +1042,21 @@ function fcDraw(){
    <div class="row"><button class="big" id="fc-next" hidden>Next card</button><button class="big alt" id="fc-close">Close</button></div>`);
   $('#fc-close').addEventListener('click', closeModal);
   $('#fc-next').addEventListener('click', fcNext);
-  $('#sheet').querySelectorAll('[data-fcdeck]').forEach(b => b.addEventListener('click', () => { FC.deck = b.dataset.fcdeck; fcBuild(); fcNext(); }));
+  $('#fc-pick').addEventListener('click', () => { FC.pick = !FC.pick; FC.n--; FC.queue.unshift(FC.current); fcNext(); });
+  $('#sheet').querySelectorAll('[data-fctab]').forEach(b => b.addEventListener('click', () => {
+    const t = new Set(FC.tabs); t.has(b.dataset.fctab) ? t.delete(b.dataset.fctab) : t.add(b.dataset.fctab);
+    if(!t.size){ toast('Keep at least one section'); return; } fcSetTabs([...t]); }));
+  $('#sheet').querySelectorAll('[data-fcpreset]').forEach(b => b.addEventListener('click', () => {
+    const v = b.dataset.fcpreset;
+    if(v === 'none'){ FC.tabs = new Set(); fcDrawPickOnly(); return; }
+    fcSetTabs(v === 'drinks' ? DRINK_TABS : v === 'food' ? FOOD_TABS : CATS.map(c => c.id)); }));
   $('#sheet').querySelectorAll('[data-fc]').forEach(b => b.addEventListener('click', () => fcAnswer(b)));
 }
 function fcAnswer(b){
   if(FC.answered) return;
   FC.answered = true;
   const homes = TABS_OF[FC.current], ok = homes.has(b.dataset.fc);
-  const home = CATS.find(c => homes.has(c.id) && (FC.deck === 'all' || DRINK_TABS.includes(c.id))) || CATS.find(c => homes.has(c.id));
+  const home = CATS.find(c => homes.has(c.id) && FC.tabs.has(c.id)) || CATS.find(c => homes.has(c.id));
   const item = home.items.find(i => i[0] === FC.current), col = item[2] || home;
   const card = $('#fc-card'); card.style.background = col.bg; card.style.color = col.fg; card.classList.add('flip');
   $('#sheet').querySelectorAll('[data-fc]').forEach(x => { if(homes.has(x.dataset.fc)) x.classList.add('fc-right'); });
@@ -1047,6 +1070,12 @@ function fcAnswer(b){
     FC.queue.splice(Math.min(3, FC.queue.length), 0, FC.current);
     $('#fc-next').hidden = false; $('#fc-next').focus();
   }
+}
+function fcDrawPickOnly(){
+  // "Clear" leaves nothing picked: show the chips so a section can be chosen
+  $('#sheet').querySelectorAll('[data-fctab]').forEach(b => { b.setAttribute('aria-pressed','false'); b.style.cssText = ''; b.textContent = CATS.find(c => c.id === b.dataset.fctab).label; });
+  $('#fc-pick').textContent = 'Sections (0) ▲';
+  toast('Now tap the sections you want');
 }
 $('#btn-fc').addEventListener('click', () => { if(!FC.queue.length && !FC.current) fcBuild(); fcNext(); });
 
