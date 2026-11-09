@@ -88,6 +88,17 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .ing.has{border-color:var(--gold)}
 .ing.has b{color:var(--gold)}
 .rec{background:#0f1622;border-radius:10px;padding:10px;font-size:.95rem}
+.fc-card{background:var(--paper);color:var(--paper-ink);border-radius:12px;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:16px;text-align:center;transition:background .25s,color .25s}
+.fc-card b{font-family:var(--f-btn);font-size:2rem;line-height:1.05;font-weight:700;text-wrap:balance}
+.fc-hint{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;opacity:.6}
+.fc-card.flip .fc-hint{opacity:0}
+.fc-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+.fc-tabs .b{min-height:50px;font-size:.9rem;font-weight:700}
+.fc-tabs .fc-right{outline:3px solid var(--good);outline-offset:-3px}
+.fc-tabs .fc-wrong{outline:3px solid var(--bad);outline-offset:-3px;opacity:.6}
+.fc-fb{min-height:1.5em}
+.fc-fb .good{color:var(--good)} .fc-fb .bad{color:var(--bad)}
+@media (prefers-reduced-motion:reduce){.fc-card{transition:none}}
 @media (max-width:480px){.juicer{grid-template-columns:72px minmax(0,1fr);gap:10px}.glass{width:70px;height:230px}.ing{padding:7px 6px;gap:5px;font-size:.8rem}.ing i{width:10px;height:10px}.mlread{font-size:.8rem}}
 @media (prefers-reduced-motion:reduce){.jfill,.jlayers div{transition:none}}
 
@@ -245,6 +256,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
     <button class="pill" id="opt-food" aria-pressed="false">Food every order</button>
     <button class="pill" id="opt-juice" aria-pressed="false">Juice orders</button>
     <button class="pill" id="opt-change" aria-pressed="true">I work out the change</button>
+    <button class="pill" id="btn-fc">Flashcards</button>
     <button class="pill" id="btn-cheat">Cheat sheet</button>
     <button class="pill" id="btn-skip">Skip customer</button>
   </div>
@@ -934,6 +946,54 @@ function otherTypes(){
   $('#btn-close').addEventListener('click', closeModal);
   $('#sheet').querySelectorAll('[data-pay]').forEach(b => b.addEventListener('click', () => { closeModal(); pay('card'); }));
 }
+
+/* ---------- flashcards: which tab is it under? ---------- */
+const DRINK_TABS = ['hot','cold','tea','shake','juice','smoothie','drinks','alcohol'];
+const TABS_OF = {}; CATS.forEach(c => c.items.forEach(([n]) => { (TABS_OF[n] = TABS_OF[n] || new Set()).add(c.id); }));
+const FC = {deck:'drinks', queue:[], n:0, right:0, streak:0, best:0, answered:false, current:null};
+function fcBuild(){
+  const names = Object.keys(TABS_OF).filter(n => FC.deck === 'all' || [...TABS_OF[n]].some(t => DRINK_TABS.includes(t)));
+  FC.queue = shuffle(names); FC.n = 0; FC.right = 0; FC.streak = 0;
+}
+function fcNext(){
+  if(!FC.queue.length) fcBuild();
+  FC.current = FC.queue.shift(); FC.answered = false; FC.n++;
+  fcDraw();
+}
+function fcDraw(){
+  const tabs = FC.deck === 'all' ? CATS : CATS.filter(c => DRINK_TABS.includes(c.id));
+  openModal(`<div class="row" style="justify-content:space-between;align-items:baseline"><h2>Which tab?</h2>
+     <div class="seg" role="group" aria-label="Deck"><button data-fcdeck="drinks" aria-pressed="${FC.deck==='drinks'}">Drinks</button><button data-fcdeck="all" aria-pressed="${FC.deck==='all'}">Everything</button></div></div>
+   <div class="sum"><span>Card</span><b>${FC.n}</b><span>Right</span><b>${FC.right} / ${FC.n - (FC.answered?0:1)}</b><span>Streak</span><b>${FC.streak} (best ${FC.best})</b><span>Left in deck</span><b>${FC.queue.length}</b></div>
+   <div class="fc-card" id="fc-card"><span class="fc-hint">Find this button</span><b>${esc(FC.current)}</b></div>
+   <div class="fc-tabs">${tabs.map(c => `<button class="b" style="background:${c.bg};color:${c.fg}" data-fc="${c.id}">${esc(c.label)}</button>`).join('')}</div>
+   <p class="fc-fb" id="fc-fb" aria-live="polite">Tap the tab you’d press on the till.</p>
+   <div class="row"><button class="big" id="fc-next" hidden>Next card</button><button class="big alt" id="fc-close">Close</button></div>`);
+  $('#fc-close').addEventListener('click', closeModal);
+  $('#fc-next').addEventListener('click', fcNext);
+  $('#sheet').querySelectorAll('[data-fcdeck]').forEach(b => b.addEventListener('click', () => { FC.deck = b.dataset.fcdeck; fcBuild(); fcNext(); }));
+  $('#sheet').querySelectorAll('[data-fc]').forEach(b => b.addEventListener('click', () => fcAnswer(b)));
+}
+function fcAnswer(b){
+  if(FC.answered) return;
+  FC.answered = true;
+  const homes = TABS_OF[FC.current], ok = homes.has(b.dataset.fc);
+  const home = CATS.find(c => homes.has(c.id) && (FC.deck === 'all' || DRINK_TABS.includes(c.id))) || CATS.find(c => homes.has(c.id));
+  const item = home.items.find(i => i[0] === FC.current), col = item[2] || home;
+  const card = $('#fc-card'); card.style.background = col.bg; card.style.color = col.fg; card.classList.add('flip');
+  $('#sheet').querySelectorAll('[data-fc]').forEach(x => { if(homes.has(x.dataset.fc)) x.classList.add('fc-right'); });
+  const fb = $('#fc-fb');
+  if(ok){ FC.right++; FC.streak++; FC.best = Math.max(FC.best, FC.streak);
+    fb.innerHTML = '<b class="good">Yes</b>, it’s under ' + esc([...homes].map(t => CATS.find(c=>c.id===t).label).join(' and ')) + '.';
+    setTimeout(() => { if(FC.answered && !$('#modal').hidden && $('#fc-card')) fcNext(); }, 900);
+  } else {
+    FC.streak = 0; b.classList.add('fc-wrong');
+    fb.innerHTML = '<b class="bad">Not quite.</b> It’s under ' + esc(home.label) + '. You’ll see it again soon.';
+    FC.queue.splice(Math.min(3, FC.queue.length), 0, FC.current);
+    $('#fc-next').hidden = false; $('#fc-next').focus();
+  }
+}
+$('#btn-fc').addEventListener('click', () => { if(!FC.queue.length && !FC.current) fcBuild(); fcNext(); });
 
 /* ---------- events ---------- */
 document.addEventListener('click', e => {
