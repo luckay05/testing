@@ -105,6 +105,20 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .fc-tabs .fc-right{outline:3px solid var(--good);outline-offset:-3px}
 .fc-tabs .fc-wrong{outline:3px solid var(--bad);outline-offset:-3px;opacity:.6}
 .fc-fb{min-height:1.5em}
+.qt{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;background:var(--frame);border:1px solid var(--frame-2);border-radius:14px;padding:10px 14px;display:flex;flex-direction:column;gap:6px;box-shadow:0 8px 20px rgba(0,0,0,.45)}
+.qt-top{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:6px 8px}
+.qt-lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:600;grid-column:1/-1}
+.qt-top b{font-family:var(--f-btn);font-size:1.9rem;line-height:1.05;font-weight:700;min-width:0;overflow-wrap:anywhere}
+@media (max-width:900px){body.quick .docket{display:none}}
+.qt-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:space-between}
+.qt-stats{font-family:var(--f-num);font-size:.78rem;color:var(--muted)}
+.qt-stats b{color:var(--ink);font-weight:600}
+.qt-fb{margin:0;font-size:.92rem;min-height:1.3em}
+.qt-fb.good{color:var(--good)} .qt-fb.bad{color:var(--bad)}
+.b.qt-hit{outline:4px solid var(--good);outline-offset:-4px}
+.b.qt-miss{outline:4px solid var(--bad);outline-offset:-4px;animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+@media (prefers-reduced-motion:reduce){.b.qt-miss{animation:none}}
 .fc-pick{background:#0f1622;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px}
 .fc-chips{display:flex;flex-wrap:wrap;gap:6px}
 .fc-chip{border:1px solid var(--frame-2);background:var(--frame);border-radius:6px;padding:6px 9px;font-family:var(--f-btn);font-weight:700;font-size:.88rem;letter-spacing:.02em}
@@ -267,6 +281,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
     <button class="pill" id="opt-food" aria-pressed="false">Food every order</button>
     <button class="pill" id="opt-juice" aria-pressed="false">Juice orders</button>
     <button class="pill" id="opt-change" aria-pressed="true">I work out the change</button>
+    <button class="pill" id="btn-qt" aria-pressed="false">Quick tap</button>
     <button class="pill" id="btn-fc">Flashcards</button>
     <button class="pill" id="btn-cheat">Cheat sheet</button>
     <button class="pill" id="btn-skip">Skip customer</button>
@@ -283,6 +298,12 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
     <button data-section="smoothie">Smoothies</button>
     <button data-section="counter">Counter Food &amp; T/A Deal</button>
   </div>
+  <section class="qt" id="qt" hidden>
+    <div class="qt-top"><span class="qt-lbl">Tap this button</span><b id="qt-item"></b><button class="ghost" id="qt-skip">Skip</button><button class="ghost" id="qt-stop">Stop</button></div>
+    <div class="qt-row"><span class="qt-stats" id="qt-stats"></span><button class="ghost" id="qt-pick"></button></div>
+    <p class="qt-fb" id="qt-fb" aria-live="polite">Find it on the till below and tap it.</p>
+    <div class="fc-pick" id="qt-chips" hidden></div>
+  </section>
   <section class="counter">
     <div class="customer">
       <div class="cust-head"><span id="cust-no">Customer 1</span><span class="timer" id="timer">0:00</span></div>
@@ -1079,6 +1100,66 @@ function fcDrawPickOnly(){
 }
 $('#btn-fc').addEventListener('click', () => { if(!FC.queue.length && !FC.current) fcBuild(); fcNext(); });
 
+/* ---------- quick tap: find the button on the till ---------- */
+const QT = {on:false, tabs:new Set(DRINK_TABS), pick:false, queue:[], cur:null, t0:0, misses:0, lock:false, done:0, first:0, times:[], streak:0, best:0};
+try { const t = JSON.parse(localStorage.getItem('tt-qt-tabs') || 'null'); if(Array.isArray(t) && t.length) QT.tabs = new Set(t.filter(id => CATS.some(c => c.id === id))); } catch(e){}
+function qtBuild(){ if(!QT.tabs.size) QT.tabs = new Set(DRINK_TABS); QT.queue = shuffle(Object.keys(TABS_OF).filter(n => [...TABS_OF[n]].some(t => QT.tabs.has(t)))); }
+function qtSetTabs(ids){ QT.tabs = new Set(ids); try { localStorage.setItem('tt-qt-tabs', JSON.stringify(ids)); } catch(e){} qtBuild(); qtNext(); }
+function qtFb(msg, cls){ const f = $('#qt-fb'); f.textContent = msg; f.className = 'qt-fb ' + (cls||''); }
+function qtNext(){
+  if(!QT.queue.length) qtBuild();
+  QT.cur = QT.queue.shift(); QT.misses = 0; QT.lock = false; QT.t0 = Date.now();
+  S.cat = 'hot'; S.mode = 'grid'; renderGrid(); renderTabs(); qtDraw();
+}
+function qtDraw(){
+  $('#qt-item').textContent = QT.cur;
+  const avg = QT.times.length ? QT.times.reduce((a,b)=>a+b,0)/QT.times.length : 0;
+  $('#qt-stats').innerHTML = `Done <b>${QT.done}</b> · First try <b>${QT.first}</b> · Avg <b>${avg ? avg.toFixed(1)+'s' : '–'}</b> · Streak <b>${QT.streak}</b> <span>(best ${QT.best})</span>`;
+  const chosen = CATS.filter(c => QT.tabs.has(c.id));
+  $('#qt-pick').textContent = `Sections (${chosen.length}) ${QT.pick ? '▲' : '▼'}`;
+  const ch = $('#qt-chips'); ch.hidden = !QT.pick;
+  ch.innerHTML = `<div class="row"><button class="ghost" data-qtpreset="drinks">Drinks</button><button class="ghost" data-qtpreset="food">Food</button><button class="ghost" data-qtpreset="all">All</button></div>
+    <div class="fc-chips">${CATS.map(c => { const on = QT.tabs.has(c.id); return `<button class="fc-chip" data-qttab="${c.id}" aria-pressed="${on}" style="${on ? `background:${c.bg};color:${c.fg};border-color:transparent` : ''}">${on ? '✓ ' : ''}${esc(c.label)}</button>`; }).join('')}</div>`;
+}
+function qtTap(name, btn){
+  if(QT.lock) return;
+  if(name === QT.cur){
+    QT.lock = true;
+    const t = (Date.now() - QT.t0)/1000; QT.done++; QT.times.push(t); if(QT.times.length > 20) QT.times.shift();
+    if(!QT.misses){ QT.first++; QT.streak++; QT.best = Math.max(QT.best, QT.streak); }
+    else { QT.streak = 0; QT.queue.splice(Math.min(3, QT.queue.length), 0, QT.cur); }
+    btn.classList.add('qt-hit'); qtFb('✓ ' + t.toFixed(1) + 's', 'good');
+    setTimeout(qtNext, 350);
+  } else {
+    QT.misses++; btn.classList.add('qt-miss'); setTimeout(() => btn.classList.remove('qt-miss'), 450);
+    const home = CATS.find(c => TABS_OF[QT.cur].has(c.id) && QT.tabs.has(c.id)) || CATS.find(c => TABS_OF[QT.cur].has(c.id));
+    qtFb(QT.misses >= 2 ? `That’s ${name}. Hint: it’s under ${home.label}.` : `That’s ${name}. Try again.`, 'bad');
+  }
+}
+function qtStart(){
+  document.body.classList.add('quick');
+  QT.on = true; $('#btn-qt').setAttribute('aria-pressed','true');
+  $('#qt').hidden = false; document.querySelector('.counter').hidden = true;
+  S.lines = []; S.sel = null; S.buf = ''; S.done = false; renderDocket();
+  qtBuild(); qtNext(); qtFb('Find it on the till below and tap it.');
+  $('#qt').scrollIntoView({block:'start'});
+}
+function qtStop(){
+  document.body.classList.remove('quick');
+  QT.on = false; $('#btn-qt').setAttribute('aria-pressed','false');
+  $('#qt').hidden = true; document.querySelector('.counter').hidden = false; newCustomer();
+}
+$('#btn-qt').addEventListener('click', () => QT.on ? qtStop() : qtStart());
+$('#qt-stop').addEventListener('click', qtStop);
+$('#qt-skip').addEventListener('click', () => { QT.streak = 0; QT.queue.splice(Math.min(3, QT.queue.length), 0, QT.cur); qtNext(); qtFb('Skipped. It’ll come back soon.'); });
+$('#qt-pick').addEventListener('click', () => { QT.pick = !QT.pick; qtDraw(); });
+$('#qt-chips').addEventListener('click', e => {
+  const b = e.target.closest('button'); if(!b) return;
+  if(b.dataset.qtpreset){ const v = b.dataset.qtpreset; qtSetTabs(v === 'drinks' ? DRINK_TABS : v === 'food' ? FOOD_TABS : CATS.map(c => c.id)); return; }
+  if(b.dataset.qttab){ const t = new Set(QT.tabs); t.has(b.dataset.qttab) ? t.delete(b.dataset.qttab) : t.add(b.dataset.qttab);
+    if(!t.size){ toast('Keep at least one section'); return; } qtSetTabs([...t]); }
+});
+
 /* ---------- events ---------- */
 document.addEventListener('click', e => {
   const b = e.target.closest('button,tr[data-line]'); if(!b) return;
@@ -1087,6 +1168,7 @@ document.addEventListener('click', e => {
   const d = b.dataset;
   if(d.jmake){ openJuicer(+d.jmake); return; }
   if(d.line){ S.sel = +d.line; renderDocket(); if(S.mode==='extras') renderGrid(); return; }
+  if(d.item && QT.on){ qtTap(d.item, b); return; }
   if(d.item){ if(S.mode==='extras'){ toast('Tap Ok to close the extras first'); return; } addItem(d.item); return; }
   if(d.extra){ toggleExtra(d.extra); return; }
   if(d.cat){ if(S.mode==='extras'){ toast('Tap Ok to close the extras first'); return; } S.cat = d.cat; renderGrid(); renderTabs(); return; }
