@@ -115,6 +115,14 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .qt-stats b{color:var(--ink);font-weight:600}
 .qt-fb{margin:0;font-size:.92rem;min-height:1.3em}
 .qt-btns{display:flex;gap:6px}
+.jg{display:flex;flex-direction:column;gap:12px}
+.jg-ticket{background:var(--frame);border:1px solid var(--frame-2);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+#jg-name{font-family:var(--f-btn);font-size:1.9rem;line-height:1.05;font-weight:700}
+.jg-said{color:var(--muted);font-size:1rem}
+.jg-body{background:var(--frame);border-radius:14px;padding:12px}
+.jg-result{background:var(--frame);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.jg-ok{margin:0;font-family:var(--f-btn);font-size:1.6rem;font-weight:700;color:var(--good)}
+.jg-bad{margin:0;font-family:var(--f-btn);font-size:1.6rem;font-weight:700;color:var(--bad)}
 .qt-wtable{width:100%;border-collapse:collapse;font-size:.88rem;font-variant-numeric:tabular-nums}
 .qt-wtable th{text-align:left;font-weight:500;color:var(--muted);font-size:.75rem;padding:3px 4px}
 .qt-wtable td{padding:4px;border-top:1px solid var(--frame-2)}
@@ -288,6 +296,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
     <button class="pill" id="opt-juice" aria-pressed="false">Juice orders</button>
     <button class="pill" id="opt-change" aria-pressed="true">I work out the change</button>
     <button class="pill" id="btn-qt" aria-pressed="false">Quick tap</button>
+    <button class="pill" id="btn-jg" aria-pressed="false">Juice bar</button>
     <button class="pill" id="btn-fc">Flashcards</button>
     <button class="pill" id="btn-cheat">Cheat sheet</button>
     <button class="pill" id="btn-skip">Skip customer</button>
@@ -304,6 +313,23 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
     <button data-section="smoothie">Smoothies</button>
     <button data-section="counter">Counter Food &amp; T/A Deal</button>
   </div>
+  <section class="jg" id="jg" hidden>
+    <div class="jg-ticket">
+      <span class="qt-lbl">Juice bar · make this</span>
+      <b id="jg-name"></b>
+      <span class="jg-said" id="jg-said"></span>
+      <div class="qt-row"><span class="qt-stats" id="jg-stats"></span>
+        <span class="qt-btns"><button class="ghost" id="jg-opts">Options ▼</button><button class="ghost" id="jg-stop">Stop</button></span></div>
+      <div class="fc-pick" id="jg-optpanel" hidden>
+        <div class="fc-chips" id="jg-chips"></div>
+        <p class="note">Tap juices to include them. Ones you get wrong come up more often.</p>
+      </div>
+    </div>
+    <div class="jg-body" id="jg-body"></div>
+    <div class="rec" id="jg-rec" hidden></div>
+    <div class="jg-result" id="jg-result" hidden></div>
+    <div class="row" id="jg-actions"><button class="big alt" id="jg-hint">Show recipe</button><button class="big" id="jg-serve">Serve it</button></div>
+  </section>
   <section class="qt" id="qt" hidden>
     <div class="qt-top"><span class="qt-lbl">Tap this button</span><b id="qt-item"></b><button class="ghost" id="qt-skip">Skip</button><button class="ghost" id="qt-stop">Stop</button></div>
     <div class="qt-row"><span class="qt-stats" id="qt-stats"></span><span class="qt-btns"><button class="ghost" id="qt-weakbtn">Weak spots ▼</button><button class="ghost" id="qt-pick"></button></span></div>
@@ -508,20 +534,22 @@ const FOODS = [
  ['a lamb and beef sausage roll',['Lamb Beef Sausage']],['a banana bread',['BANANA BREAD']],['a ham and cheese croissant',['Ham Cheese Croissant']],['a spinach roll',['Spinal']],
  ['a pie',['Pie']],['a quiche',['QUICHE']],['a muffin',['Muffin']],['a chocolate croissant',['Choc Croissant/Snail']],['a plain croissant',['Plain Croissant']],
 ];
-/* juice bar: pieces go in the juicer, then top up with juice to the line */
+/* juice bar: pieces and syrups go in first, then the last juice fills up to the line.
+   Shop rules: orange and pineapple are always 1.5 in the juicer; strawberry or passion fruit syrup is 100 ml;
+   fill up to 400 ml, except Summer Fresh (no syrup) where apple fills up to 500 ml. */
 const JUICE_ING = {
- Pineapple:{c:'#f5d33b',step:.5,u:''}, Orange:{c:'#f59a23',step:.5,u:''}, Apple:{c:'#c9d86a',step:1,u:''}, Watermelon:{c:'#f2546a',step:1,u:'wedge'},
- Carrot:{c:'#f07a1e',step:1,u:''}, 'Big beetroot':{c:'#8e1d4a',step:1,u:''}, 'Small beetroot':{c:'#b0457a',step:1,u:''}, Strawberry:{c:'#e2334d',step:50,u:'g'},
+ Orange:{c:'#f59a23',step:.5,u:''}, Pineapple:{c:'#f5d33b',step:.5,u:''}, Apple:{c:'#c9d86a',step:1,u:''}, Watermelon:{c:'#f2546a',step:1,u:'wedge'},
+ Carrot:{c:'#f07a1e',step:1,u:''}, 'Big beetroot':{c:'#8e1d4a',step:1,u:''}, 'Small beetroot':{c:'#b0457a',step:1,u:''},
+ 'Strawberry syrup':{c:'#e2334d',step:50,u:'ml'}, 'Passion fruit syrup':{c:'#c98a1a',step:50,u:'ml'},
  Mint:{c:'#4fc28a',step:1,u:'sprig'}, Lemon:{c:'#f7ec6a',step:1,u:'bit'}, Ginger:{c:'#e8c98a',step:1,u:'bit'}, Turmeric:{c:'#e8a10c',step:1,u:'bit'},
  Celery:{c:'#9bc96a',step:1,u:'stick'}, Cucumber:{c:'#b5dc96',step:.5,u:''}, Kale:{c:'#2f7d3a',step:1,u:'handful'}, Spinach:{c:'#3d8f3f',step:1,u:'handful'},
- 'Passion Fruit':{c:'#c98a1a',step:1,u:''},
 };
-const TOPS = ['Apple','Orange','Watermelon','Pineapple'];
+const TOPS = ['Apple','Watermelon','Orange','Pineapple'];
 const LINES = [400,450,500];
 const JUICES = [
- {label:'Summer Fresh', say:'a Summer Fresh', btn:'SUMMER FRESH', recipe:{pieces:{Pineapple:[1.5,1.5], Mint:[2,4,'a few']}, top:'Apple', line:450, lineNoIce:500}},
- {label:'Blissful Pink Breeze', say:'a Blissful Pink Breeze', btn:'BLISSFUL PINK', recipe:{pieces:{Strawberry:[100,100], Pineapple:[1.5,1.5], Mint:[1,1]}, top:'Watermelon', line:400}},
- {label:'Passion', say:'a Passion juice', btn:'PASSION', recipe:{pieces:{Orange:[1.5,1.5], Mint:[1,3,'some']}, top:'Watermelon', line:400}},
+ {label:'Summer Fresh', say:'a Summer Fresh', btn:'SUMMER FRESH', recipe:{pieces:{Pineapple:[1.5,1.5], Mint:[2,4,'a few']}, top:'Apple', line:500}},
+ {label:'Blissful Pink Breeze', say:'a Blissful Pink Breeze', btn:'BLISSFUL PINK', recipe:{pieces:{'Strawberry syrup':[100,100], Pineapple:[1.5,1.5], Mint:[1,1]}, top:'Watermelon', line:400}},
+ {label:'Passion', say:'a Passion juice', btn:'PASSION', recipe:{pieces:{Orange:[1.5,1.5], 'Passion fruit syrup':[100,100], Mint:[1,3,'some']}, top:'Watermelon', line:400}},
  {label:'Beauty Boost', say:'a Beauty Boost', btn:'BEAUTY BOOST', recipe:{pieces:{Turmeric:[1,2,'a bit of'], Ginger:[1,2,'a bit of'], Lemon:[1,2,'a bit of'], Carrot:[1,1]}, top:'Orange', line:400}},
  {label:'Energies Power Juice', say:'an Energies Power Juice', btn:'POWER J', recipe:{beet:true, pieces:{Carrot:[1,1], Lemon:[1,2,'a bit of'], Ginger:[1,2,'a bit of']}, top:'Orange', line:400}},
  {label:'Super Green', say:'a Super Green', btn:'SUPER GREEN', guess:true, recipe:{pieces:{Celery:[2,2], Cucumber:[.5,.5], Kale:[1,1,'a handful of'], Lemon:[1,2,'a bit of'], Ginger:[1,2,'a bit of']}, top:'Apple', line:400}},
@@ -529,36 +557,38 @@ const JUICES = [
 const MYO = ['Apple','Orange','Pineapple','Carrot','Watermelon','Kale','Spinach','Celery','Beetroot','Ginger','Lemon','Mint','Passion Fruit'];
 const shuffle = a => { a = a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
 function myoRecipe(list){
-  const top = list.find(x => TOPS.includes(x)), r = {pieces:{}, top, line:400};
+  const top = list.find(x => x === 'Apple' || x === 'Watermelon') || list.find(x => TOPS.includes(x)), r = {pieces:{}, top, line:400};
   list.forEach(x => {
     if(x === top) return;
     if(x === 'Beetroot') r.beet = true;
+    else if(x === 'Passion Fruit') r.pieces['Passion fruit syrup'] = [100,100];
+    else if(x === 'Orange' || x === 'Pineapple') r.pieces[x] = [1.5,1.5];
     else if(['Ginger','Lemon','Mint'].includes(x)) r.pieces[x] = [1,2,'a bit of'];
     else if(['Kale','Spinach'].includes(x)) r.pieces[x] = [1,1,'a handful of'];
-    else if(['Pineapple','Orange'].includes(x)) r.pieces[x] = [1,1.5];
     else if(x === 'Celery') r.pieces[x] = [1,2];
     else r.pieces[x] = [1,1];
   });
   return r;
 }
-const amtTxt = (k,v) => { const u = JUICE_ING[k].u; const n = Math.abs(v-1) < 1e-9 || !u || u === 'g' ? u : u + 's'; return u === 'g' ? `${v} g ${k.toLowerCase()}` : `${v}${n ? ' ' + n : ''} ${k.toLowerCase()}`; };
-function recipeStr(r, noIce){
+const amtTxt = (k,v) => { const u = JUICE_ING[k].u; if(u === 'ml') return `${v} ml ${k.toLowerCase()}`; const n = Math.abs(v-1) < 1e-9 || !u ? u : u + 's'; return `${v}${n ? ' ' + n : ''} ${k.toLowerCase()}`; };
+function recipeStr(r){
   const parts = [];
   if(r.beet) parts.push('1 big or 2 small beetroot');
   Object.entries(r.pieces).forEach(([k,[lo,hi,lab]]) => parts.push(lab ? `${lab} ${k.toLowerCase()}` : lo === hi ? amtTxt(k,lo) : `${lo}–${amtTxt(k,hi)}`));
-  const line = noIce === undefined && r.lineNoIce ? `${r.line} ml (${r.lineNoIce} ml no ice)` : `${noIce && r.lineNoIce ? r.lineNoIce : r.line} ml`;
-  parts.push(`top up with ${r.top.toLowerCase()} to ${line}`);
+  parts.push(`then ${r.top.toLowerCase()} fills up to ${r.line} ml`);
   return parts.join(' · ');
 }
-function makeJuice(){
-  if(chance(.65)){ const j = rnd(JUICES); const noIce = !!j.recipe.lineNoIce && chance(.35);
-    return {kind:'juice', say:j.say + (noIce ? ' with no ice' : ''), short:j.label + (noIce ? ' (no ice)' : ''), label:j.label + (noIce ? ' (no ice)' : ''), noIce, accept:[j.btn], extras:[], qty:1, recipe:j.recipe}; }
+function makeMyo(){
   const n = rnd([3,3,3,4,4,5]); let list = shuffle(MYO).slice(0,n);
-  if(!list.some(x => TOPS.includes(x))) list[Math.floor(Math.random()*n)] = rnd(TOPS);
+  if(!list.some(x => x === 'Apple' || x === 'Watermelon')) list[Math.floor(Math.random()*n)] = rnd(['Apple','Watermelon']);
   list = [...new Set(list)];
   const btn = list.length <= 3 ? 'MAKE YOUR OWN 3' : list.length === 4 ? 'MAKEYOUR OWN 4' : 'MAKE YOU OWN 5 OR MORE';
   const w = list.map(x => x.toLowerCase()); const said = w.slice(0,-1).join(', ') + ' and ' + w[w.length-1];
   return {kind:'juice', say:'a juice with ' + said, short:'make-your-own juice (' + said + ')', label:'Make your own: ' + list.join(', '), myo:true, accept:[btn], extras:[], qty:1, recipe:myoRecipe(list)};
+}
+function makeJuice(){
+  if(chance(.65)){ const j = rnd(JUICES); return {kind:'juice', say:j.say, short:j.label, label:j.label, accept:[j.btn], extras:[], qty:1, recipe:j.recipe}; }
+  return makeMyo();
 }
 /* practise one section of the till */
 const SECTIONS = {
@@ -874,39 +904,49 @@ function updateJuiceCard(i){
   const f = $('#jfill-'+i); if(f) f.innerHTML = glassLayers(j);
   const t = $('#jml-'+i); if(t) t.textContent = j.top && j.line ? `${j.line} ml · ${j.top.toLowerCase()}` : j.taps.length ? `${j.taps.length} in, not topped up` : 'Not made yet';
 }
-function openJuicer(i){
-  const j = S.juices[i]; const keys = Object.keys(JUICE_ING);
-  openModal(`<h2>Juice ${i+1}: ${esc(j.item.myo ? 'Make your own' : j.item.label)}</h2>
-   <p class="note">They asked for ${esc(j.item.say.replace(/,$/,''))}.</p>
-   <div class="juicer">
-     <div><div class="glass"><div class="jlayers" id="jlayers"></div>${LINES.map(l => `<div class="jmark" style="bottom:${l/CAP*100}%"><span>${l}</span></div>`).join('')}</div><div class="mlread" id="mlread"></div></div>
+function mountJuicer(root, j, onChange){
+  const keys = Object.keys(JUICE_ING);
+  root.innerHTML = `<div class="juicer">
+     <div><div class="glass"><div class="jlayers"></div>${LINES.map(l => `<div class="jmark" style="bottom:${l/CAP*100}%"><span>${l}</span></div>`).join('')}</div><div class="mlread"></div></div>
      <div class="jsteps">
        <h4>1 · Into the juicer <span>tap to add</span></h4>
-       <div class="ings">${keys.map((k,n) => `<button class="ing" data-ing="${esc(k)}"><i style="background:${JUICE_ING[k].c}"></i><span>${esc(k)}</span><b id="ingct-${n}"></b></button>`).join('')}</div>
-       <h4>2 · Top up with</h4>
+       <div class="ings">${keys.map((k,n) => `<button class="ing" data-ing="${esc(k)}"><i style="background:${JUICE_ING[k].c}"></i><span>${esc(k)}</span><b data-ct="${n}"></b></button>`).join('')}</div>
+       <h4>2 · Last, fill up with</h4>
        <div class="tops">${TOPS.map(k => `<button class="topb" data-top="${k}"><i style="background:${JUICE_ING[k].c}"></i>${k}</button>`).join('')}</div>
        <h4>3 · Up to the line</h4>
        <div class="tops">${LINES.map(l => `<button class="topb" data-line="${l}">${l} ml</button>`).join('')}</div>
+       <div class="row"><button class="ghost" data-jact="undo">Undo</button><button class="ghost" data-jact="empty">Empty</button></div>
      </div>
-   </div>
-   <div class="rec" id="jrec" hidden><b>Recipe:</b> ${esc(recipeStr(j.item.recipe, !!j.item.noIce))}</div>
-   <div class="row"><button class="big alt" id="j-undo">Undo</button><button class="big alt" id="j-empty">Empty</button><button class="big alt" id="j-rec">Show recipe</button><button class="big" id="j-done">Done</button></div>`);
-  const sheet = $('#sheet');
+   </div>`;
   const draw = () => {
     const m = countsOf(j);
-    $('#jlayers').innerHTML = glassLayers(j);
-    $('#mlread').innerHTML = j.top && j.line ? `<b>${j.line}</b> ml` : `<span class="note">${j.taps.length} in</span>`;
-    keys.forEach((k,n) => { const b = $('#ingct-'+n); b.textContent = m[k] ? (JUICE_ING[k].u === 'g' ? m[k] + 'g' : m[k]) : ''; b.parentElement.classList.toggle('has', !!m[k]); });
-    sheet.querySelectorAll('[data-top]').forEach(b => b.setAttribute('aria-pressed', b.dataset.top === j.top));
-    sheet.querySelectorAll('[data-line]').forEach(b => b.setAttribute('aria-pressed', +b.dataset.line === j.line));
-    updateJuiceCard(i);
+    root.querySelector('.jlayers').innerHTML = glassLayers(j);
+    root.querySelector('.mlread').innerHTML = j.top && j.line ? `<b>${j.line}</b> ml` : `<span class="note">${j.taps.length} in</span>`;
+    keys.forEach((k,n) => { const b = root.querySelector(`[data-ct="${n}"]`); b.textContent = m[k] ? (JUICE_ING[k].u === 'ml' ? m[k] + 'ml' : m[k]) : ''; b.parentElement.classList.toggle('has', !!m[k]); });
+    root.querySelectorAll('[data-top]').forEach(b => b.setAttribute('aria-pressed', b.dataset.top === j.top));
+    root.querySelectorAll('[data-line]').forEach(b => b.setAttribute('aria-pressed', +b.dataset.line === j.line));
+    if(onChange) onChange();
+  };
+  root.onclick = e => {
+    const b = e.target.closest('button'); if(!b || !root.contains(b)) return;
+    if(b.dataset.ing){ if(j.taps.length >= 20){ toast('That’s a lot in there. Undo or Empty it.'); return; } j.taps.push(b.dataset.ing); }
+    else if(b.dataset.top){ j.top = j.top === b.dataset.top ? null : b.dataset.top; }
+    else if(b.dataset.line){ j.line = j.line === +b.dataset.line ? null : +b.dataset.line; }
+    else if(b.dataset.jact === 'undo'){ j.taps.pop(); }
+    else if(b.dataset.jact === 'empty'){ j.taps.length = 0; j.top = null; j.line = null; }
+    else return;
+    draw();
   };
   draw();
-  sheet.querySelectorAll('[data-ing]').forEach(b => b.addEventListener('click', () => { if(j.taps.length >= 20){ toast('That’s a lot of fruit. Undo or Empty it.'); return; } j.taps.push(b.dataset.ing); draw(); }));
-  sheet.querySelectorAll('[data-top]').forEach(b => b.addEventListener('click', () => { j.top = j.top === b.dataset.top ? null : b.dataset.top; draw(); }));
-  sheet.querySelectorAll('[data-line]').forEach(b => b.addEventListener('click', () => { j.line = j.line === +b.dataset.line ? null : +b.dataset.line; draw(); }));
-  $('#j-undo').addEventListener('click', () => { j.taps.pop(); draw(); });
-  $('#j-empty').addEventListener('click', () => { j.taps.length = 0; j.top = null; j.line = null; draw(); });
+}
+function openJuicer(i){
+  const j = S.juices[i];
+  openModal(`<h2>Juice ${i+1}: ${esc(j.item.myo ? 'Make your own' : j.item.label)}</h2>
+   <p class="note">They asked for ${esc(j.item.say)}.</p>
+   <div id="jm"></div>
+   <div class="rec" id="jrec" hidden><b>Recipe:</b> ${esc(recipeStr(j.item.recipe))}</div>
+   <div class="row"><button class="big alt" id="j-rec">Show recipe</button><button class="big" id="j-done">Done</button></div>`);
+  mountJuicer($('#jm'), j, () => updateJuiceCard(i));
   $('#j-rec').addEventListener('click', e => { const r = $('#jrec'); r.hidden = !r.hidden; e.target.textContent = r.hidden ? 'Show recipe' : 'Hide recipe'; });
   $('#j-done').addEventListener('click', closeModal);
 }
@@ -922,7 +962,7 @@ function gradeJuice(j){
     delete cnt[k]; });
   Object.keys(cnt).forEach(k => probs.push(k === r.top ? `${k.toLowerCase()} is only the top-up here, no pieces` : `no ${k.toLowerCase()} in this one`));
   if(j.top !== r.top) probs.push(j.top ? `topped up with ${j.top.toLowerCase()}, should be ${r.top.toLowerCase()}` : `not topped up (use ${r.top.toLowerCase()})`);
-  const want = j.item.noIce && r.lineNoIce ? r.lineNoIce : r.line;
+  const want = r.line;
   if(j.line !== want) probs.push(j.line ? `filled to ${j.line} ml, should be ${want} ml` : `fill to the ${want} ml line`);
   return {ok: !probs.length, probs};
 }
@@ -972,7 +1012,7 @@ function grade(r){
   o.items.flatMap(it => it.kind === 'deal' ? [it.coffee] : it.kind === 'coffee' ? [it] : []).forEach(it => { for(let q=0;q<it.qty;q++){ const inp = $('#cup-'+ci); const w = inp ? inp.value : '';
     const g = gradeCup(w, it); cupRes.push({ok:g.ok, t:`Cup ${ci+1}: ${w.trim() ? '<code>'+esc(w.trim())+'</code>' : '(blank)'}`, h: g.ok ? (g.why || '') : g.why + ' · should be <code>' + esc(it.cup) + '</code>', raw:true}); ci++; } });
   const juiceRes = (S.juices||[]).map((j,i) => { const g = gradeJuice(j);
-    return {ok:g.ok, t:'Juice ' + (i+1) + ': ' + j.item.label, h: g.ok ? '' : g.probs.join('; ') + '. Recipe: ' + recipeStr(j.item.recipe, !!j.item.noIce)}; });
+    return {ok:g.ok, t:'Juice ' + (i+1) + ': ' + j.item.label, h: g.ok ? '' : g.probs.join('; ') + '. Recipe: ' + recipeStr(j.item.recipe)}; });
   // payment
   const payRes = [];
   const wantCash = o.cash;
@@ -1019,8 +1059,8 @@ function cheat(){
     <div><h3>Drinks</h3><table>${row('Cappuccino','C')}${row('Latte','L')}${row('Flat white','F')}${row('Hot chocolate','HC')}${row('Mocha','Moca')}${row('Chai latte','Chai')}${row('Long black','LB')}${row('Short black','SB')}${row('Piccolo latte','Pic')}${row('Beetroot latte','BeetL')}${row('Golden latte','GoldL')}</table></div>
     <div><h3>Extras</h3><table>${row('Strong','St')}${row('Skim','S')}${row('Soy','Y')}${row('Almond','A')}${row('Oat','O')}${row('Lactose free','Lac')}${row('Decaf','Dec')}${row('Caramel','Ca')}${row('Vanilla','Va')}${row('Hazelnut','Ha')}${row('Sugar (1)','1S')}${row('Equal (1)','1E')}</table></div>
    </div></div>
-   <div class="cheat"><h3>Juices · pieces in, then top up</h3><table>${JUICES.map(j => `<tr><td>${j.label}<br><span class="note">${j.btn}</span></td><td style="font-size:.85rem">${recipeStr(j.recipe)}${j.guess ? ' <i>(my guess)</i>' : ''}</td></tr>`).join('')}</table>
-   <p class="note">Make your own (my guess): top up to 400 ml with the first juice fruit they say (apple, orange, watermelon or pineapple). One piece of everything else; a bit of ginger, lemon or mint; a handful of kale or spinach; beetroot is 1 big or 2 small. 3 items → MAKE YOUR OWN 3, 4 → MAKEYOUR OWN 4, 5+ → MAKE YOU OWN 5 OR MORE.</p></div>
+   <div class="cheat"><h3>Juices · pieces and syrup in, then fill up</h3><table>${JUICES.map(j => `<tr><td>${j.label}<br><span class="note">${j.btn}</span></td><td style="font-size:.85rem">${recipeStr(j.recipe)}${j.guess ? ' <i>(my guess)</i>' : ''}</td></tr>`).join('')}</table>
+   <p class="note">Rules: orange and pineapple are always 1.5. Strawberry or passion fruit syrup is 100 ml. The last juice fills up to 400 ml (Summer Fresh: apple to 500 ml). Make your own (my guess for the rest): apple or watermelon fills up; one piece of the rest; a bit of ginger, lemon or mint; a handful of kale or spinach; beetroot is 1 big or 2 small. 3 items → MAKE YOUR OWN 3, 4 → MAKEYOUR OWN 4, 5+ → MAKE YOU OWN 5 OR MORE.</p></div>
    <p class="note">On the till: regular takeaway coffee → <b>REG TA COFFE</b> (or the drink’s own button), large → <b>LRG TA COFFEE</b>. Mocha, beetroot and golden use the <b>MOC. MAT. GOLD. BEET</b> buttons; hot chocolate uses <b>HOT CHOC</b>. Then tap the line and <b>Extra</b> for milk, syrup, Decaf, and Extra Shot for “strong”. Milk swaps are $0.60 on a regular, $0.90 on a large. Skim, sugar and Equal are free so they only go on the cup.</p>
    <div class="row"><button class="big alt" id="btn-close">Close</button></div>`);
   $('#btn-close').addEventListener('click', closeModal);
@@ -1216,6 +1256,75 @@ $('#qt-chips').addEventListener('click', e => {
   if(b.dataset.qttab){ const t = new Set(QT.tabs); t.has(b.dataset.qttab) ? t.delete(b.dataset.qttab) : t.add(b.dataset.qttab);
     if(!t.size){ toast('Keep at least one section'); return; } qtSetTabs([...t]); }
 });
+
+/* ---------- juice bar game ---------- */
+const JG = {on:false, j:null, t0:0, hinted:false, done:0, perfect:0, streak:0, best:0, times:[], last:null,
+  pick:new Set([...JUICES.map(x => x.label), 'Make your own'])};
+let JSTAT = {};
+try { JSTAT = JSON.parse(localStorage.getItem('tt-jg-stats') || '{}') || {}; const p = JSON.parse(localStorage.getItem('tt-jg-pick') || 'null'); if(Array.isArray(p) && p.length) JG.pick = new Set(p); } catch(e){}
+const jgSave = () => { try { localStorage.setItem('tt-jg-stats', JSON.stringify(JSTAT)); localStorage.setItem('tt-jg-pick', JSON.stringify([...JG.pick])); } catch(e){} };
+function jgNext(){
+  const names = [...JUICES.map(x => x.label), 'Make your own'].filter(n => JG.pick.has(n));
+  const pool = names.length ? names : ['Summer Fresh'];
+  const cand = pool.length > 1 ? pool.filter(n => n !== JG.last) : pool;
+  const ws = cand.map(n => { const x = JSTAT[n]; return !x ? 2.5 : Math.max(.3, 1 + 5*x.e); });
+  let r = Math.random() * ws.reduce((a,b)=>a+b,0), name = cand[cand.length-1];
+  for(let i=0;i<cand.length;i++){ if((r -= ws[i]) < 0){ name = cand[i]; break; } }
+  JG.last = name;
+  let item;
+  if(name === 'Make your own') item = makeMyo();
+  else { const d = JUICES.find(x => x.label === name); item = {kind:'juice', say:d.say, short:d.label, label:d.label, accept:[d.btn], extras:[], qty:1, recipe:d.recipe}; }
+  JG.j = {item, taps:[], top:null, line:null, key:name}; JG.t0 = Date.now(); JG.hinted = false;
+  $('#jg-name').textContent = item.myo ? 'Make your own' : item.label;
+  $('#jg-said').textContent = '“' + cap(item.say) + ', please.”';
+  $('#jg-rec').hidden = true; $('#jg-rec').innerHTML = '<b>Recipe:</b> ' + esc(recipeStr(item.recipe));
+  $('#jg-hint').textContent = 'Show recipe';
+  $('#jg-result').hidden = true; $('#jg-actions').hidden = false;
+  mountJuicer($('#jg-body'), JG.j);
+  jgDraw();
+}
+function jgDraw(){
+  const avg = JG.times.length ? JG.times.reduce((a,b)=>a+b,0)/JG.times.length : 0;
+  $('#jg-stats').innerHTML = `Made <b>${JG.done}</b> · Perfect <b>${JG.perfect}</b> · Avg <b>${avg ? avg.toFixed(0)+'s' : '–'}</b> · Streak <b>${JG.streak}</b> <span>(best ${JG.best})</span>`;
+  const all = [...JUICES.map(x => x.label), 'Make your own'];
+  $('#jg-chips').innerHTML = all.map(n => { const on = JG.pick.has(n), x = JSTAT[n];
+    const tag = x && x.n ? ` · ${Math.round((1-x.e)*100)}%` : '';
+    return `<button class="fc-chip" data-jgpick="${esc(n)}" aria-pressed="${on}" style="${on ? 'background:#df5ad5;color:#2a0627;border-color:transparent' : ''}">${on ? '✓ ' : ''}${esc(n)}${tag}</button>`; }).join('');
+}
+function jgServe(){
+  const j = JG.j, g = gradeJuice(j), t = (Date.now() - JG.t0)/1000;
+  const ok = g.ok && !JG.hinted;
+  const x = JSTAT[j.key] || {n:0, e:g.ok ? 0 : 1}; const k = x.n ? .4 : 1;
+  x.e = x.e*(1-k) + (g.ok ? 0 : 1)*k; x.n++; JSTAT[j.key] = x; jgSave();
+  JG.done++; JG.times.push(t); if(JG.times.length > 20) JG.times.shift();
+  if(ok){ JG.perfect++; JG.streak++; JG.best = Math.max(JG.best, JG.streak); } else JG.streak = 0;
+  const res = $('#jg-result'); res.hidden = false;
+  res.innerHTML = g.ok
+    ? `<p class="jg-ok">✓ Spot on${JG.hinted ? ' (with the recipe showing)' : ''} · ${t.toFixed(0)}s</p>`
+    : `<p class="jg-bad">✗ Not quite</p><ul class="res">${g.probs.map(p => `<li class="no"><span class="ic">✗</span><span>${esc(cap(p))}</span></li>`).join('')}</ul><p class="note"><b>Recipe:</b> ${esc(recipeStr(j.item.recipe))}</p>`;
+  res.innerHTML += `<div class="row"><button class="big" id="jg-next">Next juice</button></div>`;
+  $('#jg-actions').hidden = true; $('#jg-rec').hidden = true;
+  $('#jg-next').addEventListener('click', () => { jgNext(); $('#jg').scrollIntoView({block:'start'}); });
+  jgDraw(); res.scrollIntoView({block:'nearest'});
+}
+function jgStart(){
+  if(QT.on) qtStop();
+  JG.on = true; $('#btn-jg').setAttribute('aria-pressed','true');
+  $('#jg').hidden = false; document.querySelector('.counter').hidden = true; document.querySelector('.screen').hidden = true;
+  jgNext(); $('#jg').scrollIntoView({block:'start'});
+}
+function jgStop(){
+  JG.on = false; $('#btn-jg').setAttribute('aria-pressed','false');
+  $('#jg').hidden = true; document.querySelector('.counter').hidden = false; document.querySelector('.screen').hidden = false;
+}
+$('#btn-jg').addEventListener('click', () => JG.on ? jgStop() : jgStart());
+$('#jg-stop').addEventListener('click', jgStop);
+$('#jg-serve').addEventListener('click', jgServe);
+$('#jg-hint').addEventListener('click', e => { const r = $('#jg-rec'); r.hidden = !r.hidden; if(!r.hidden) JG.hinted = true; e.target.textContent = r.hidden ? 'Show recipe' : 'Hide recipe'; });
+$('#jg-opts').addEventListener('click', e => { const p = $('#jg-optpanel'); p.hidden = !p.hidden; e.target.textContent = p.hidden ? 'Options ▼' : 'Options ▲'; });
+$('#jg-chips').addEventListener('click', e => { const b = e.target.closest('[data-jgpick]'); if(!b) return;
+  const n = b.dataset.jgpick; if(JG.pick.has(n)){ if(JG.pick.size === 1){ toast('Keep at least one juice'); return; } JG.pick.delete(n); } else JG.pick.add(n);
+  jgSave(); jgDraw(); });
 
 /* ---------- events ---------- */
 document.addEventListener('click', e => {
