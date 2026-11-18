@@ -909,10 +909,19 @@ function askChange(result){
 /* ---------- juicer ---------- */
 const CAP = 550; // the glass drawing holds 550 ml
 const countsOf = j => { const m = {}; j.taps.forEach(k => m[k] = Math.round(((m[k]||0) + JUICE_ING[k].step)*10)/10); return m; };
+/* rough juice each tap gives, in ml (for the picture only) */
+const PIECE_ML = {Orange:50, Pineapple:45, Apple:80, Watermelon:100, Carrot:60, 'Big beetroot':80, 'Small beetroot':40,
+  Strawberry:40, 'Mixed berries':40, Mango:50, 'Strawberry syrup':50, 'Passion fruit syrup':50,
+  Mint:3, Lemon:10, Ginger:5, Turmeric:5, Celery:30, Cucumber:60, Kale:15, Spinach:10};
+const piecesMl = j => j.taps.reduce((a,k) => a + (PIECE_ML[k] || 20), 0);
 function glassLayers(j){
-  const bands = j.taps.map(k => `<div style="height:3.5%;background:${JUICE_ING[k].c}"></div>`).slice(0,12);
-  const used = Math.min(12, j.taps.length) * 3.5;
-  if(j.top && j.line){ const h = Math.max(0, j.line/CAP*100 - used); bands.push(`<div style="height:${h}%;background:${JUICE_ING[j.top].c};opacity:.85"></div>`); }
+  const bands = []; let used = 0;
+  for(const k of j.taps){
+    if(used >= 100) break;
+    const h = Math.min(100 - used, Math.max(1.2, (PIECE_ML[k] || 20)/CAP*100));
+    bands.push(`<div style="height:${h}%;background:${JUICE_ING[k].c}"></div>`); used += h;
+  }
+  if(j.top && j.line && used < 100){ const h = Math.max(0, Math.min(100, j.line/CAP*100) - used); bands.push(`<div style="height:${h}%;background:${JUICE_ING[j.top].c};opacity:.85"></div>`); }
   return bands.join('');
 }
 function updateJuiceCard(i){
@@ -966,7 +975,10 @@ function mountJuicer(root, j, onChange){
     const m = countsOf(j);
     root.querySelector('.jlayers').innerHTML = glassLayers(j);
     root.querySelector('.jtray-pcs').innerHTML = j.taps.length ? j.taps.map((k,i) => `<span class="tp${i === j.taps.length-1 ? ' new' : ''}" title="${esc(k)}">${pieceIcon(k, 34)}</span>`).join('') : '<span class="note">Nothing yet. Tap the fruit below.</span>';
-    root.querySelector('.mlread').innerHTML = j.top && j.line ? `<b>${j.line}</b> ml` : `<span class="note">${j.taps.length} in</span>`;
+    const pm = piecesMl(j);
+    root.querySelector('.mlread').innerHTML = pm > CAP ? `<b style="color:var(--bad)">Overflowing</b>`
+      : j.top && j.line ? (pm > j.line ? `<b style="color:var(--bad)">~${pm}</b> ml, over the line` : `<b>${j.line}</b> ml`)
+      : `<span class="note">~${pm} ml</span>`;
     keys.forEach((k,n) => { const b = root.querySelector(`[data-ct="${n}"]`); b.textContent = m[k] ? (JUICE_ING[k].u === 'ml' ? m[k] + 'ml' : m[k]) : ''; b.parentElement.classList.toggle('has', !!m[k]); });
     root.querySelectorAll('[data-top]').forEach(b => b.setAttribute('aria-pressed', b.dataset.top === j.top));
     root.querySelectorAll('[data-line]').forEach(b => b.setAttribute('aria-pressed', +b.dataset.line === j.line));
