@@ -135,6 +135,13 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 @media (prefers-reduced-motion:reduce){.b.qt-miss{animation:none}}
 .fc-pick{background:#0f1622;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px}
 .fc-chips{display:flex;flex-wrap:wrap;gap:6px}
+.pk-list{display:flex;flex-direction:column;gap:4px;max-height:50vh;overflow-y:auto}
+.pk-row{display:flex;gap:4px}
+.pk-head{flex:1;text-align:left;border:1px solid var(--frame-2);background:var(--frame);border-radius:6px;padding:7px 10px;font-family:var(--f-btn);font-weight:700;font-size:.92rem;letter-spacing:.02em;display:flex;justify-content:space-between;gap:8px}
+.pk-head span{font-family:var(--f-num);font-weight:500;font-size:.78rem;opacity:.8}
+.pk-head.some{opacity:.85}
+.pk-open{border:1px solid var(--frame-2);background:var(--frame);border-radius:6px;width:44px;font-size:1.1rem}
+.pk-items{display:flex;flex-wrap:wrap;gap:5px;padding:6px 2px 8px}
 .fc-chip{border:1px solid var(--frame-2);background:var(--frame);border-radius:6px;padding:6px 9px;font-family:var(--f-btn);font-weight:700;font-size:.88rem;letter-spacing:.02em}
 .fc-fb .good{color:var(--good)} .fc-fb .bad{color:var(--bad)}
 @media (prefers-reduced-motion:reduce){.fc-card{transition:none}}
@@ -1076,15 +1083,49 @@ function otherTypes(){
 /* ---------- flashcards: which tab is it under? ---------- */
 const DRINK_TABS = ['hot','cold','tea','shake','juice','smoothie','drinks','alcohol'];
 const TABS_OF = {}; CATS.forEach(c => c.items.forEach(([n]) => { (TABS_OF[n] = TABS_OF[n] || new Set()).add(c.id); }));
-const FC = {tabs:new Set(DRINK_TABS), pick:false, queue:[], n:0, right:0, streak:0, best:0, answered:false, current:null};
-try { const t = JSON.parse(localStorage.getItem('tt-fc-tabs') || 'null'); if(Array.isArray(t) && t.length) FC.tabs = new Set(t.filter(id => CATS.some(c => c.id === id))); } catch(e){}
 const FOOD_TABS = CATS.map(c => c.id).filter(id => !DRINK_TABS.includes(id));
-function fcSetTabs(ids){ if(!ids.length){ toast('Pick at least one section'); return; }
-  FC.tabs = new Set(ids); try { localStorage.setItem('tt-fc-tabs', JSON.stringify(ids)); } catch(e){}
-  fcBuild(); fcNext(); }
+const ALL_NAMES = Object.keys(TABS_OF);
+const namesIn = ids => ALL_NAMES.filter(n => ids.some(id => TABS_OF[n].has(id)));
+/* Item picker: whole sections or single items, any mix. `sel` is a Set of button names. */
+const PK_OPEN = new Set();
+function loadPick(key, oldTabsKey){
+  try { const v = JSON.parse(localStorage.getItem(key) || 'null'); if(Array.isArray(v) && v.length) return new Set(v.filter(n => TABS_OF[n])); } catch(e){}
+  try { const t = JSON.parse(localStorage.getItem(oldTabsKey) || 'null'); if(Array.isArray(t) && t.length) return new Set(namesIn(t)); } catch(e){}
+  return new Set(namesIn(DRINK_TABS));
+}
+const savePick = (key, sel) => { try { localStorage.setItem(key, JSON.stringify([...sel])); } catch(e){} };
+function pickSummary(sel){
+  if(!sel.size) return 'nothing yet';
+  const parts = CATS.map(c => { const names = c.items.map(i => i[0]); const k = names.filter(n => sel.has(n)).length;
+    return k === 0 ? '' : k === names.length ? c.label : `${c.label} (${k} of ${names.length})`; }).filter(Boolean);
+  return parts.join(', ');
+}
+function pickerHTML(sel){
+  return `<div class="row"><button class="ghost" data-pkpreset="drinks">All drinks</button><button class="ghost" data-pkpreset="food">All food</button><button class="ghost" data-pkpreset="all">Everything</button><button class="ghost" data-pkpreset="clear">Clear</button></div>
+  <p class="note">Tap a section to take all of it, or open it with ▾ to pick single items.</p>
+  <div class="pk-list">${CATS.map(c => {
+    const names = c.items.map(i => i[0]), k = names.filter(n => sel.has(n)).length, open = PK_OPEN.has(c.id);
+    const state = k === 0 ? 'none' : k === names.length ? 'all' : 'some';
+    return `<div class="pk-sec">
+      <div class="pk-row"><button class="pk-head ${state}" data-pksec="${c.id}" style="${state !== 'none' ? `background:${c.bg};color:${c.fg};border-color:transparent` : ''}">${state === 'all' ? '✓ ' : state === 'some' ? '◐ ' : ''}${esc(c.label)} <span>${k}/${names.length}</span></button>
+      <button class="pk-open" data-pkopen="${c.id}" aria-expanded="${open}" aria-label="Pick single ${esc(c.label)} items">${open ? '▴' : '▾'}</button></div>
+      ${open ? `<div class="pk-items">${names.map(n => { const on = sel.has(n); return `<button class="fc-chip" data-pkitem="${esc(n)}" aria-pressed="${on}" style="${on ? `background:${c.bg};color:${c.fg};border-color:transparent` : ''}">${on ? '✓ ' : ''}${esc(n)}</button>`; }).join('')}</div>` : ''}
+    </div>`; }).join('')}</div>`;
+}
+/* returns 'open' (only the view changed), 'sel' (selection changed) or null */
+function pickerClick(e, sel){
+  const b = e.target.closest('button'); if(!b) return null;
+  const d = b.dataset;
+  if(d.pkopen){ PK_OPEN.has(d.pkopen) ? PK_OPEN.delete(d.pkopen) : PK_OPEN.add(d.pkopen); return 'open'; }
+  if(d.pkpreset){ sel.clear(); if(d.pkpreset !== 'clear') namesIn(d.pkpreset === 'drinks' ? DRINK_TABS : d.pkpreset === 'food' ? FOOD_TABS : CATS.map(c => c.id)).forEach(n => sel.add(n)); return 'sel'; }
+  if(d.pksec){ const names = CATS.find(c => c.id === d.pksec).items.map(i => i[0]); const all = names.every(n => sel.has(n));
+    names.forEach(n => all ? sel.delete(n) : sel.add(n)); return 'sel'; }
+  if(d.pkitem){ sel.has(d.pkitem) ? sel.delete(d.pkitem) : sel.add(d.pkitem); return 'sel'; }
+  return null;
+}
+const FC = {items:loadPick('tt-fc-items','tt-fc-tabs'), pick:false, queue:[], n:0, right:0, streak:0, best:0, answered:false, current:null};
 function fcBuild(){
-  if(!FC.tabs.size) FC.tabs = new Set(DRINK_TABS);
-  const names = Object.keys(TABS_OF).filter(n => [...TABS_OF[n]].some(t => FC.tabs.has(t)));
+  const names = FC.items.size ? [...FC.items] : namesIn(DRINK_TABS);
   FC.queue = shuffle(names); FC.n = 0; FC.right = 0; FC.streak = 0;
 }
 function fcNext(){
@@ -1094,15 +1135,10 @@ function fcNext(){
 }
 function fcDraw(){
   const tabs = CATS;
-  const chosen = CATS.filter(c => FC.tabs.has(c.id));
   openModal(`<div class="row" style="justify-content:space-between;align-items:baseline"><h2>Which tab?</h2>
-     <button class="pill" id="fc-pick" aria-expanded="${FC.pick}">Sections (${chosen.length}) ${FC.pick ? '▲' : '▼'}</button></div>
-   <p class="note" style="margin-top:-6px">Testing: ${esc(chosen.length === CATS.length ? 'every section' : chosen.map(c => c.label).join(', '))}</p>
-   <div class="fc-pick" ${FC.pick ? '' : 'hidden'}>
-     <div class="row"><button class="ghost" data-fcpreset="drinks">Drinks</button><button class="ghost" data-fcpreset="food">Food</button><button class="ghost" data-fcpreset="all">All</button><button class="ghost" data-fcpreset="none">Clear</button></div>
-     <div class="fc-chips">${CATS.map(c => { const on = FC.tabs.has(c.id); return `<button class="fc-chip" data-fctab="${c.id}" aria-pressed="${on}" style="${on ? `background:${c.bg};color:${c.fg};border-color:transparent` : ''}">${on ? '✓ ' : ''}${esc(c.label)}</button>`; }).join('')}</div>
-     <p class="note">Tap sections to add or remove them. The deck restarts when you change it.</p>
-   </div>
+     <button class="pill" id="fc-pick" aria-expanded="${FC.pick}">Choose items (${FC.items.size}) ${FC.pick ? '▲' : '▼'}</button></div>
+   <p class="note" style="margin-top:-6px">Testing: ${esc(pickSummary(FC.items))}</p>
+   <div class="fc-pick" id="fc-pickpanel" ${FC.pick ? '' : 'hidden'}>${pickerHTML(FC.items)}</div>
    <div class="sum"><span>Card</span><b>${FC.n}</b><span>Right</span><b>${FC.right} / ${FC.n - (FC.answered?0:1)}</b><span>Streak</span><b>${FC.streak} (best ${FC.best})</b><span>Left in deck</span><b>${FC.queue.length}</b></div>
    <div class="fc-card" id="fc-card"><span class="fc-hint">Find this button</span><b>${esc(FC.current)}</b></div>
    <div class="fc-tabs">${tabs.map(c => `<button class="b" style="background:${c.bg};color:${c.fg}" data-fc="${c.id}">${esc(c.label)}</button>`).join('')}</div>
@@ -1111,20 +1147,21 @@ function fcDraw(){
   $('#fc-close').addEventListener('click', closeModal);
   $('#fc-next').addEventListener('click', fcNext);
   $('#fc-pick').addEventListener('click', () => { FC.pick = !FC.pick; FC.n--; FC.queue.unshift(FC.current); fcNext(); });
-  $('#sheet').querySelectorAll('[data-fctab]').forEach(b => b.addEventListener('click', () => {
-    const t = new Set(FC.tabs); t.has(b.dataset.fctab) ? t.delete(b.dataset.fctab) : t.add(b.dataset.fctab);
-    if(!t.size){ toast('Keep at least one section'); return; } fcSetTabs([...t]); }));
-  $('#sheet').querySelectorAll('[data-fcpreset]').forEach(b => b.addEventListener('click', () => {
-    const v = b.dataset.fcpreset;
-    if(v === 'none'){ FC.tabs = new Set(); fcDrawPickOnly(); return; }
-    fcSetTabs(v === 'drinks' ? DRINK_TABS : v === 'food' ? FOOD_TABS : CATS.map(c => c.id)); }));
+  $('#fc-pickpanel').addEventListener('click', e => {
+    const r = pickerClick(e, FC.items); if(!r) return;
+    const y = $('#modal').scrollTop;
+    if(r === 'sel'){ savePick('tt-fc-items', FC.items); if(!FC.items.size) toast('Pick something to practise'); else fcBuild(); }
+    if(FC.items.size){ if(r === 'sel'){ fcNext(); } else { FC.n--; FC.queue.unshift(FC.current); fcNext(); } }
+    else fcDraw();
+    $('#modal').scrollTop = y;
+  });
   $('#sheet').querySelectorAll('[data-fc]').forEach(b => b.addEventListener('click', () => fcAnswer(b)));
 }
 function fcAnswer(b){
   if(FC.answered) return;
   FC.answered = true;
   const homes = TABS_OF[FC.current], ok = homes.has(b.dataset.fc);
-  const home = CATS.find(c => homes.has(c.id) && FC.tabs.has(c.id)) || CATS.find(c => homes.has(c.id));
+  const home = CATS.find(c => homes.has(c.id));
   const item = home.items.find(i => i[0] === FC.current), col = item[2] || home;
   const card = $('#fc-card'); card.style.background = col.bg; card.style.color = col.fg; card.classList.add('flip');
   $('#sheet').querySelectorAll('[data-fc]').forEach(x => { if(homes.has(x.dataset.fc)) x.classList.add('fc-right'); });
@@ -1139,23 +1176,16 @@ function fcAnswer(b){
     $('#fc-next').hidden = false; $('#fc-next').focus();
   }
 }
-function fcDrawPickOnly(){
-  // "Clear" leaves nothing picked: show the chips so a section can be chosen
-  $('#sheet').querySelectorAll('[data-fctab]').forEach(b => { b.setAttribute('aria-pressed','false'); b.style.cssText = ''; b.textContent = CATS.find(c => c.id === b.dataset.fctab).label; });
-  $('#fc-pick').textContent = 'Sections (0) ▲';
-  toast('Now tap the sections you want');
-}
 $('#btn-fc').addEventListener('click', () => { if(!FC.queue.length && !FC.current) fcBuild(); fcNext(); });
 
 /* ---------- quick tap: find the button on the till ---------- */
-const QT = {on:false, tabs:new Set(DRINK_TABS), pick:false, weak:false, again:[], recent:[], cur:null, t0:0, misses:0, lock:false, done:0, first:0, times:[], streak:0, best:0};
-try { const t = JSON.parse(localStorage.getItem('tt-qt-tabs') || 'null'); if(Array.isArray(t) && t.length) QT.tabs = new Set(t.filter(id => CATS.some(c => c.id === id))); } catch(e){}
+const QT = {on:false, items:loadPick('tt-qt-items','tt-qt-tabs'), pick:false, weak:false, again:[], recent:[], cur:null, t0:0, misses:0, lock:false, done:0, first:0, times:[], streak:0, best:0};
 /* Each item remembers how you do on it (saved in this browser):
    n = times seen, t = smoothed time in seconds, e = smoothed miss rate 0..1 */
 let QSTAT = {};
 try { QSTAT = JSON.parse(localStorage.getItem('tt-qt-stats') || '{}') || {}; } catch(e){ QSTAT = {}; }
 const qtSave = () => { try { localStorage.setItem('tt-qt-stats', JSON.stringify(QSTAT)); } catch(e){} };
-function qtPool(){ if(!QT.tabs.size) QT.tabs = new Set(DRINK_TABS); return Object.keys(TABS_OF).filter(n => [...TABS_OF[n]].some(t => QT.tabs.has(t))); }
+function qtPool(){ const v = [...QT.items].filter(n => TABS_OF[n]); return v.length ? v : namesIn(DRINK_TABS); }
 function qtMedian(pool){ const ts = pool.map(n => QSTAT[n]).filter(x => x && x.n).map(x => x.t).sort((a,b)=>a-b); return ts.length ? ts[Math.floor(ts.length/2)] : 3; }
 function qtWeight(n, med){
   const x = QSTAT[n];
@@ -1165,7 +1195,6 @@ function qtWeight(n, med){
   return Math.min(10, Math.max(.25, w));
 }
 function qtBuild(){ QT.again = []; QT.recent = []; }
-function qtSetTabs(ids){ QT.tabs = new Set(ids); try { localStorage.setItem('tt-qt-tabs', JSON.stringify(ids)); } catch(e){} qtBuild(); qtNext(); }
 function qtFb(msg, cls){ const f = $('#qt-fb'); f.textContent = msg; f.className = 'qt-fb ' + (cls||''); }
 function qtPick(){
   QT.again.forEach(a => a.in--);
@@ -1197,11 +1226,9 @@ function qtDraw(){
   $('#qt-item').textContent = QT.cur;
   const avg = QT.times.length ? QT.times.reduce((a,b)=>a+b,0)/QT.times.length : 0;
   $('#qt-stats').innerHTML = `Done <b>${QT.done}</b> · First try <b>${QT.first}</b> · Avg <b>${avg ? avg.toFixed(1)+'s' : '–'}</b> · Streak <b>${QT.streak}</b> <span>(best ${QT.best})</span>`;
-  const chosen = CATS.filter(c => QT.tabs.has(c.id));
-  $('#qt-pick').textContent = `Sections (${chosen.length}) ${QT.pick ? '▲' : '▼'}`;
+  $('#qt-pick').textContent = `Choose items (${QT.items.size}) ${QT.pick ? '▲' : '▼'}`;
   const ch = $('#qt-chips'); ch.hidden = !QT.pick;
-  ch.innerHTML = `<div class="row"><button class="ghost" data-qtpreset="drinks">Drinks</button><button class="ghost" data-qtpreset="food">Food</button><button class="ghost" data-qtpreset="all">All</button></div>
-    <div class="fc-chips">${CATS.map(c => { const on = QT.tabs.has(c.id); return `<button class="fc-chip" data-qttab="${c.id}" aria-pressed="${on}" style="${on ? `background:${c.bg};color:${c.fg};border-color:transparent` : ''}">${on ? '✓ ' : ''}${esc(c.label)}</button>`; }).join('')}</div>`;
+  ch.innerHTML = `<p class="note">Practising: ${esc(pickSummary(QT.items))}</p>` + pickerHTML(QT.items);
   const pool = qtPool(), seen = pool.filter(n => QSTAT[n] && QSTAT[n].n).length;
   const weak = qtWeakList(), med = qtMedian(pool);
   const mastered = weak.filter(x => x.w <= .35).length;
@@ -1224,7 +1251,7 @@ function qtTap(name, btn){
     setTimeout(qtNext, 350);
   } else {
     QT.misses++; btn.classList.add('qt-miss'); setTimeout(() => btn.classList.remove('qt-miss'), 450);
-    const home = CATS.find(c => TABS_OF[QT.cur].has(c.id) && QT.tabs.has(c.id)) || CATS.find(c => TABS_OF[QT.cur].has(c.id));
+    const home = CATS.find(c => TABS_OF[QT.cur].has(c.id));
     qtFb(QT.misses >= 2 ? `That’s ${name}. Hint: it’s under ${home.label}.` : `That’s ${name}. Try again.`, 'bad');
   }
 }
@@ -1251,10 +1278,11 @@ $('#qt-weak').addEventListener('click', e => { if(e.target.id !== 'qt-reset') re
   qtResetArmed = false; QSTAT = {}; qtSave(); qtDraw(); toast('Progress reset'); });
 $('#qt-pick').addEventListener('click', () => { QT.pick = !QT.pick; qtDraw(); });
 $('#qt-chips').addEventListener('click', e => {
-  const b = e.target.closest('button'); if(!b) return;
-  if(b.dataset.qtpreset){ const v = b.dataset.qtpreset; qtSetTabs(v === 'drinks' ? DRINK_TABS : v === 'food' ? FOOD_TABS : CATS.map(c => c.id)); return; }
-  if(b.dataset.qttab){ const t = new Set(QT.tabs); t.has(b.dataset.qttab) ? t.delete(b.dataset.qttab) : t.add(b.dataset.qttab);
-    if(!t.size){ toast('Keep at least one section'); return; } qtSetTabs([...t]); }
+  const r = pickerClick(e, QT.items); if(!r) return;
+  if(r === 'open'){ qtDraw(); return; }
+  savePick('tt-qt-items', QT.items);
+  if(!QT.items.size){ toast('Pick something to practise'); qtDraw(); return; }
+  qtBuild(); qtNext();
 });
 
 /* ---------- juice bar game ---------- */
