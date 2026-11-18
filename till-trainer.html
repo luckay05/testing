@@ -94,7 +94,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .ing .pc,.topb .pc{flex:none}
 .jtray{background:#0f1622;border-radius:10px;padding:6px 8px;margin-bottom:10px;display:flex;flex-direction:column;gap:2px}
 .jtray-lbl{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
-.jtray-pcs{display:flex;flex-wrap:wrap;gap:0;min-height:36px;align-items:center}
+.jtray-pcs{contain:layout paint;display:flex;flex-wrap:wrap;gap:0;min-height:36px;align-items:center}
 .jtray-pcs .tp{display:inline-flex}
 .jtray-pcs .tp.new{animation:drop .25s ease-out}
 @keyframes drop{from{transform:translateY(-10px);opacity:0}to{transform:none;opacity:1}}
@@ -955,7 +955,14 @@ const ICON = {
  'Strawberry syrup':`<rect x="17" y="3" width="6" height="4" rx="1" fill="#333"/><rect x="17.5" y="7" width="5" height="5" fill="#e2334d"/><path d="M12 15 Q12 12 17.5 12 H22.5 Q28 12 28 15 V35 Q28 37 26 37 H14 Q12 37 12 35Z" fill="#e2334d"/><rect x="13.5" y="19" width="13" height="11" rx="1.5" fill="#fff4f4"/><path d="M20 21.5 C17 21.5 16.5 25 20 28 C23.5 25 23 21.5 20 21.5Z" fill="#e2334d"/><rect x="14" y="15" width="3" height="19" rx="1.5" fill="#fff" opacity=".25"/>`,
  'Passion fruit syrup':`<rect x="17" y="3" width="6" height="4" rx="1" fill="#333"/><rect x="17.5" y="7" width="5" height="5" fill="#e8a317"/><path d="M12 15 Q12 12 17.5 12 H22.5 Q28 12 28 15 V35 Q28 37 26 37 H14 Q12 37 12 35Z" fill="#e8a317"/><rect x="13.5" y="19" width="13" height="11" rx="1.5" fill="#fff8e6"/><circle cx="20" cy="24.5" r="4" fill="#6b2a6e"/><circle cx="20" cy="24.5" r="2.7" fill="#f6c437"/><g fill="#2a1a10"><circle cx="19" cy="24" r=".6"/><circle cx="21" cy="25" r=".6"/><circle cx="20" cy="23" r=".5"/></g><rect x="14" y="15" width="3" height="19" rx="1.5" fill="#fff" opacity=".25"/>`,
 };
-const icon = (k, sz=26) => `<svg class="pc" viewBox="0 0 40 40" width="${sz}" height="${sz}" aria-hidden="true">${ICON[k] || `<circle cx="20" cy="20" r="12" fill="${(JUICE_ING[k]||{}).c||'#999'}"/>`}</svg>`;
+/* draw each picture once in a hidden sprite; every icon then just points at it (much lighter for phones) */
+const icSlug = k => 'ic-' + k.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+(() => { const sp = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  sp.setAttribute('width','0'); sp.setAttribute('height','0'); sp.setAttribute('aria-hidden','true'); sp.style.position = 'absolute';
+  sp.innerHTML = '<defs>' + Object.entries(ICON).map(([k,v]) => `<symbol id="${icSlug(k)}" viewBox="0 0 40 40">${v}</symbol>`).join('') + '</defs>';
+  document.body.prepend(sp); })();
+const icon = (k, sz=26) => ICON[k] ? `<svg class="pc" width="${sz}" height="${sz}" aria-hidden="true"><use href="#${icSlug(k)}"/></svg>`
+  : `<svg class="pc" viewBox="0 0 40 40" width="${sz}" height="${sz}" aria-hidden="true"><circle cx="20" cy="20" r="12" fill="${(JUICE_ING[k]||{}).c||'#999'}"/></svg>`;
 const pieceIcon = (k, sz) => icon(k === 'Orange' ? 'OrangeHalf' : k, sz);
 function mountJuicer(root, j, onChange){
   const keys = Object.keys(JUICE_ING);
@@ -971,17 +978,25 @@ function mountJuicer(root, j, onChange){
        <div class="row"><button class="ghost" data-jact="undo">Undo</button><button class="ghost" data-jact="empty">Empty</button></div>
      </div>
    </div>`;
+  const els = {layers:root.querySelector('.jlayers'), tray:root.querySelector('.jtray-pcs'), ml:root.querySelector('.mlread'),
+    cts:keys.map((k,n) => root.querySelector(`[data-ct="${n}"]`)), tops:[...root.querySelectorAll('[data-top]')], lines:[...root.querySelectorAll('[data-line]')]};
+  const pieceEl = k => `<span class="tp new" title="${esc(k)}">${pieceIcon(k, 34)}</span>`;
+  let shown = -1; // pieces currently drawn in the tray
   const draw = () => {
     const m = countsOf(j);
-    root.querySelector('.jlayers').innerHTML = glassLayers(j);
-    root.querySelector('.jtray-pcs').innerHTML = j.taps.length ? j.taps.map((k,i) => `<span class="tp${i === j.taps.length-1 ? ' new' : ''}" title="${esc(k)}">${pieceIcon(k, 34)}</span>`).join('') : '<span class="note">Nothing yet. Tap the fruit below.</span>';
+    els.layers.innerHTML = glassLayers(j);
+    if(!j.taps.length){ els.tray.innerHTML = '<span class="note">Nothing yet. Tap the fruit below.</span>'; shown = 0; }
+    else if(shown === j.taps.length - 1 && shown > 0){ els.tray.querySelector('.new')?.classList.remove('new'); els.tray.insertAdjacentHTML('beforeend', pieceEl(j.taps[j.taps.length-1])); }
+    else if(shown === j.taps.length + 1){ els.tray.lastElementChild?.remove(); }
+    else if(shown !== j.taps.length){ els.tray.innerHTML = j.taps.map(pieceEl).join(''); els.tray.querySelectorAll('.new').forEach((x,i,a) => { if(i < a.length-1) x.classList.remove('new'); }); }
+    shown = j.taps.length;
     const pm = piecesMl(j);
-    root.querySelector('.mlread').innerHTML = pm > CAP ? `<b style="color:var(--bad)">Overflowing</b>`
+    els.ml.innerHTML = pm > CAP ? `<b style="color:var(--bad)">Overflowing</b>`
       : j.top && j.line ? (pm > j.line ? `<b style="color:var(--bad)">~${pm}</b> ml, over the line` : `<b>${j.line}</b> ml`)
       : `<span class="note">~${pm} ml</span>`;
-    keys.forEach((k,n) => { const b = root.querySelector(`[data-ct="${n}"]`); b.textContent = m[k] ? (JUICE_ING[k].u === 'ml' ? m[k] + 'ml' : m[k]) : ''; b.parentElement.classList.toggle('has', !!m[k]); });
-    root.querySelectorAll('[data-top]').forEach(b => b.setAttribute('aria-pressed', b.dataset.top === j.top));
-    root.querySelectorAll('[data-line]').forEach(b => b.setAttribute('aria-pressed', +b.dataset.line === j.line));
+    keys.forEach((k,n) => { const b = els.cts[n], t = m[k] ? (JUICE_ING[k].u === 'ml' ? m[k] + 'ml' : String(m[k])) : ''; if(b.textContent !== t){ b.textContent = t; b.parentElement.classList.toggle('has', !!m[k]); } });
+    els.tops.forEach(b => b.setAttribute('aria-pressed', b.dataset.top === j.top));
+    els.lines.forEach(b => b.setAttribute('aria-pressed', +b.dataset.line === j.line));
     if(onChange) onChange();
   };
   root.onclick = e => {
