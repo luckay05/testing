@@ -1483,46 +1483,57 @@ function recipeLines(r){
   Object.entries(r.pieces).forEach(([k,[lo,hi,lab]]) => L.push([k, lab ? `${lab} ${k.toLowerCase()}` : lo === hi ? amtTxt(k,lo) : `${lo}–${amtTxt(k,hi)}`]));
   return L;
 }
-// ingredients for non-juice drinks are copied from the shop's menu (no amounts on the menu)
+// Smoothies, frappes and milkshakes: the shop's recipe sheet (handwritten 450 ml corrections applied).
+// Cold coffee, Viet coffee and tea: ingredients from the menu only. Each drink: [name, till button, lines, source]
 const MENU_DRINKS = {
  'Smoothies':[
-  ['Berrylicious Smoothie','BERRYLICIOUS SMOTHIES',['Mixed berries','Banana','Yoghurt','Honey','Coconut water']],
-  ['Antioxidant Smoothie','Antioxidant Smoothie',['Açai','Mixed berries','Honey','Almond milk']],
-  ['Green Guru Smoothie','Green Guru Smoothie',['Super green mix','Super green powder','Honey','Almond milk','Banana if they want it']],
-  ['Breakfast Smoothie','Breakfast Smoothie',['Egg','Espresso','Rolled oats','Banana','Almond milk','Simple syrup']],
-  ['Protein Shake','Protein Shake',['Lite milk','Protein powder','Cocoa powder','Chia seed','Peanut butter']],
-  ['The Pump','The Pump',['Almond milk','Strawberries','Banana','Honey','Peanut butter','Spinach']],
-  ['Power Lift','POWER LIFT SMOTHIE',['Almond milk','Banana','Strawberries','Oats','Honey','Chocolate protein']]],
+  ['Berrylicious Smoothie','BERRYLICIOUS SMOTHIES',['1 full scoop mixed berry','4–5 pieces banana','1 full tablespoon yoghurt','1 squeeze honey','15 ml sugar syrup','Fill coconut water up to 450 ml'],'sheet'],
+  ['Antioxidant Smoothie','Antioxidant Smoothie',['1 pack açai','1 scoop mixed berries','1 squeeze honey (no honey if they add protein powder, peanut butter or banana)','Fill almond milk up to 450 ml'],'sheet'],
+  ['Green Guru Smoothie','Green Guru Smoothie',['1 scoop green fruit mix (the scoop in the mixed berry container)','4–5 pieces banana','½ teaspoon super green powder','Fill almond milk up to 480 ml dine in, 520 ml takeaway'],'sheet'],
+  ['Breakfast Smoothie','Breakfast Smoothie',['1 whole raw egg','1 shot coffee','1 full spoon soaked oats','4–5 pieces banana','3 cubes ice','15 ml sugar syrup','Fill almond milk up to 450 ml'],'sheet'],
+  ['The Pump','The Pump',['4–5 strawberries','4–5 pieces banana','Half a handful fresh spinach','1 tablespoon peanut butter','Fill almond milk up to 450 ml'],'sheet'],
+  ['Power Lift','POWER LIFT SMOTHIE',['4–5 pieces banana','4–5 strawberries','1 full tablespoon soaked oats','1 squeeze honey','¾ scoop choc protein powder','Fill almond milk up to 450 ml'],'sheet'],
+  ['Protein Shake','Protein Shake',['Cocoa choc powder','¾ scoop protein powder','1 full tablespoon peanut butter','1 big squeeze chia seed','6 cubes ice','Fill lite milk up to 450 ml'],'sheet'],
+  ['Smoothie rules','—',['Add all the fruit and ingredients before the milk or coconut water','Use all the fruit frozen','If they add peanut butter, banana or oats, use less of the usual fruit or ingredients, or it gets too thick'],'sheet']],
  'Frappes (icy)':[
-  ['Lychee Breeze','Lychee Breeze',['Lychee','Lime cordial','Fresh mint','Cucumber']],
-  ['Mango Tango','Mango Tango',['Mango','Strawberry','Raspberry cordial','Apple juice']],
-  ['Melon Crush','Melon Crush',['Watermelon','Strawberry','Raspberry cordial']]],
+  ['Melon Crush','Melon Crush',['1 full scoop ice','5–6 frozen strawberries','1 large chunk watermelon, chopped','15 ml raspberry cordial','30 ml lime cordial','30 ml sugar syrup','Blend'],'sheet'],
+  ['Mango Tango','Mango Tango',['⅔ scoop ice','5–6 frozen strawberries','9–10 pieces mango','30 ml tropical cordial','30 ml lime cordial','30 ml sugar syrup','Fill water up to 500 ml'],'sheet'],
+  ['Lychee Breeze','Lychee Breeze',['1 scoop ice','2 large chunks frozen lychee','Half a cucumber','6 mint leaves','15 ml sugar syrup','30 ml lime cordial','15 ml lychee cordial','Fill water up to 250 ml'],'sheet'],
+  ['Tropical Delight','Tropical Delight',['½ scoop ice','1 big chunk mixed frozen fruit','30 ml lime cordial (the sheet lists it twice)','30 ml sugar syrup','60 ml passion juice'],'sheet']],
+ 'Milkshakes':[
+  ['Milkshake (choc, strawberry, caramel, vanilla)','Chocolate Milk Shake',['In the milkshake cup','2 standard scoops ice cream','60 ml flavour (choc, strawberry, caramel or vanilla)','Fill milk up to the second line'],'sheet'],
+  ['Mars Milkshake','Mars Milk Shake',['2 standard scoops ice cream','1 tablespoon malt','1 heaped teaspoon cocoa choc powder','30 ml caramel syrup'],'sheet'],
+  ['Snickers Milkshake','Snickers Milk Shake',['2 standard scoops ice cream','1 heaped teaspoon cocoa choc powder','30 ml caramel','1 tablespoon peanut butter'],'sheet'],
+  ['Thickshake','—',['Add 1 big scoop ice cream (+$2.20)'],'sheet']],
  'Cold coffee':[
-  ['Ice Latte','Ice Latte',['Double shot coffee','Milk','Ice']],
-  ['Ice Long Black','Ice Long Black',['Double shot coffee','Cold water','Ice']],
-  ['Cloudy Black','CLOUDY BLACK',['Double shot cold black coffee','Topped with espresso cold foam']],
-  ['Espresso Cloud','ESPRESO CLOUD',['Iced coconut water','Topped with espresso cold foam']],
-  ['Ice Coffee','Ice Coffee',['Coffee','Milk','Ice cream','Whipped cream']],
-  ['Ice Chocolate','Ice Chocolate',['Chocolate','Milk','Ice cream','Whipped cream']],
-  ['Coffee Frappe','Coffee Frappe',['Coffee','Ice cream','Milk','Ice, all blended']],
-  ['Affogato','Affogato',['Double shot espresso','Poured over vanilla ice cream']]],
+  ['Ice Latte','Ice Latte',['Double shot coffee','Milk','Ice'],'menu'],
+  ['Ice Long Black','Ice Long Black',['Double shot coffee','Cold water','Ice'],'menu'],
+  ['Cloudy Black','CLOUDY BLACK',['Double shot cold black coffee','Topped with espresso cold foam'],'menu'],
+  ['Espresso Cloud','ESPRESO CLOUD',['Iced coconut water','Topped with espresso cold foam'],'menu'],
+  ['Ice Coffee','Ice Coffee',['Coffee','Milk','Ice cream','Whipped cream'],'menu'],
+  ['Ice Chocolate','Ice Chocolate',['Chocolate','Milk','Ice cream','Whipped cream'],'menu'],
+  ['Coffee Frappe','Coffee Frappe',['Coffee','Ice cream','Milk','Ice, all blended'],'menu'],
+  ['Affogato','Affogato',['Double shot espresso','Poured over vanilla ice cream'],'menu']],
  'Viet coffee & tea':[
-  ['Viet Hot Filtered Coffee','VIET HOT COFFEE',['Filtered coffee','With condensed milk, or black']],
-  ['Viet Ice Coffee White','VIET ICE COFFE',['Filtered coffee','Crushed ice','Condensed milk']],
-  ['Masala Chai Tea','Masala Chai Tea',['Tea leaf brewed in a pot','Served with milk and honey']],
-  ['Loose leaf teas','English Breakfast',['Brewed and served in a pot','English Breakfast, Earl Grey, Oolong, Peppermint, Chamomile']],
-  ['Fresh Hot Lemon Ginger Tea','HOT LEMON HONEY GINGER',['Fresh lemon','Ginger','With honey, in a mug']]],
+  ['Viet Hot Filtered Coffee','VIET HOT COFFEE',['Filtered coffee','With condensed milk, or black'],'menu'],
+  ['Viet Ice Coffee White','VIET ICE COFFE',['Filtered coffee','Crushed ice','Condensed milk'],'menu'],
+  ['Masala Chai Tea','Masala Chai Tea',['Tea leaf brewed in a pot','Served with milk and honey'],'menu'],
+  ['Loose leaf teas','English Breakfast',['Brewed and served in a pot','English Breakfast, Earl Grey, Oolong, Peppermint, Chamomile'],'menu'],
+  ['Fresh Hot Lemon Ginger Tea','HOT LEMON HONEY GINGER',['Fresh lemon','Ginger','With honey, in a mug'],'menu']],
 };
-const DC_ICON = {'Mixed berries':'Mixed berries', Strawberries:'Strawberry', Strawberry:'Strawberry', Mango:'Mango', Watermelon:'Watermelon', Cucumber:'Cucumber',
-  'Fresh mint':'Mint', 'Apple juice':'Apple', Spinach:'Spinach', 'Fresh lemon':'Lemon', Ginger:'Ginger'};
+const DC_ICONS = [[/mixed berr|berry|green fruit/i,'Mixed berries'],[/strawberr/i,'Strawberry'],[/mango/i,'Mango'],[/watermelon/i,'Watermelon'],[/cucumber/i,'Cucumber'],
+  [/mint/i,'Mint'],[/spinach/i,'Spinach'],[/lemon/i,'Lemon'],[/^ginger/i,'Ginger'],[/apple/i,'Apple']];
+const dcIcon = t => (DC_ICONS.find(([re]) => re.test(t)) || [])[1] || null;
 const DC_CATS = ['Juices', ...Object.keys(MENU_DRINKS)];
 const DC_ALL = [
   ...JUICES.map(j => ({cat:'Juices', label:j.label, btn:j.btn, guess:j.guess,
     lines:[...recipeLines(j.recipe).map(([k,t]) => [k === 'Orange' ? 'OrangeHalf' : k, cap(t)]), [j.recipe.top, `Then ${j.recipe.top.toLowerCase()} fills up to ${j.recipe.line} ml`, true]]})),
-  ...Object.entries(MENU_DRINKS).flatMap(([cat, list]) => list.map(([label, btn, ing]) => ({cat, label, btn, menu:true, lines:ing.map(t => [DC_ICON[t] || null, t])})))
+  ...Object.entries(MENU_DRINKS).flatMap(([cat, list]) => list.map(([label, btn, ing, src]) => ({cat, label, btn, src, lines:ing.map(t => [dcIcon(t), t, /^fill|^blend/i.test(t)])})))
 ];
 const DC = {on:false, pick:new Set(DC_ALL.map(d => d.label)), stats:{}, cur:null, flip:false, t0:0, tFlip:0, score:0, streak:0, n:0, right:0, best:0, again:[], last:''};
 try { const v = JSON.parse(localStorage.getItem('tt-dc-pick') || 'null'); if(Array.isArray(v) && v.length) DC.pick = new Set(v.filter(l => DC_ALL.some(d => d.label === l)));
+  const known = new Set(JSON.parse(localStorage.getItem('tt-dc-known') || '[]')); if(Array.isArray(v) && v.length) DC_ALL.forEach(d => { if(!known.has(d.label)) DC.pick.add(d.label); });
+  localStorage.setItem('tt-dc-known', JSON.stringify(DC_ALL.map(d => d.label)));
   DC.stats = JSON.parse(localStorage.getItem('tt-dc-stats') || '{}') || {}; DC.best = +localStorage.getItem('tt-dc-best') || 0; } catch(e){}
 const dcSave = () => { try { localStorage.setItem('tt-dc-pick', JSON.stringify([...DC.pick])); localStorage.setItem('tt-dc-stats', JSON.stringify(DC.stats)); localStorage.setItem('tt-dc-best', DC.best); } catch(e){} };
 function dcPickNext(){
@@ -1545,8 +1556,8 @@ function dcDraw(){
   $('#ar-stats').innerHTML = `Streak <b>${DC.streak}</b> · Got <b>${DC.right}/${DC.n}</b> · Best <b>${DC.best.toLocaleString()}</b>`;
   const list = `<ul class="jc-list dc-list">${d.lines.map(([ic, t, fill]) => `<li class="${fill ? 'jc-fill' : ''}">${ic ? icon(ic, 30) : '<i class="dc-dot"></i>'}<span>${esc(t)}</span></li>`).join('')}</ul>`;
   $('#ar-card').className = 'dc-card' + (DC.flip ? ' flipped' : '');
-  $('#ar-card').innerHTML = `<span class="dc-cat">${esc(d.cat)}</span><b class="dc-name">${esc(d.label)}</b><span class="note">Till: ${esc(d.btn)}</span>` +
-    (DC.flip ? `<div class="dc-ans">${list}${d.menu ? '<p class="note">From the menu (no amounts listed).</p>' : ''}${d.guess ? '<p class="note">My guess, not your shop’s recipe yet.</p>' : ''}</div>`
+  $('#ar-card').innerHTML = `<span class="dc-cat">${esc(d.cat)}</span><b class="dc-name">${esc(d.label)}</b>${d.btn !== '—' ? `<span class="note">Till: ${esc(d.btn)}</span>` : ''}` +
+    (DC.flip ? `<div class="dc-ans">${list}${d.src === 'menu' ? '<p class="note">From the menu (no amounts listed).</p>' : d.src === 'sheet' ? '<p class="note">From the recipe sheet.</p>' : ''}${d.guess ? '<p class="note">My guess, not your shop’s recipe yet.</p>' : ''}</div>`
              : `<span class="jc-tap">What’s in it? Say it in your head, then tap to check.</span>`);
   $('#ar-btns').innerHTML = DC.flip ? `<button class="big alt dc-miss" id="dc-miss">Missed it</button><button class="big dc-got" id="dc-got">Got it</button>` : `<button class="big" id="dc-show">Show recipe</button>`;
 }
