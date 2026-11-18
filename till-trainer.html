@@ -149,6 +149,18 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .ar-card .fc-hint{font-size:.85rem;opacity:.75;text-transform:none;letter-spacing:0;font-weight:600}
 .ar-big{font-family:var(--f-btn);font-size:2rem;font-weight:700;line-height:1.05;width:100%;display:flex;justify-content:center}
 .ar-rec{font-family:var(--f-body);font-size:1rem;font-weight:400;text-align:left;max-width:320px}
+.dc-card{display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--paper);color:var(--paper-ink);border:0;border-radius:14px;padding:18px 16px;min-height:220px;width:100%;text-align:center}
+.dc-cat{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:#5b6b80;font-weight:600}
+.dc-name{font-family:var(--f-btn);font-size:2.2rem;line-height:1.05;font-weight:700;text-wrap:balance}
+.dc-card .note{color:#5b6b80}
+.dc-ans{width:100%;border-top:2px dashed #c9d3df;margin-top:6px;padding-top:12px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.dc-list{max-width:340px;text-align:left}
+.dc-dot{width:30px;height:30px;flex:none;display:inline-flex;align-items:center;justify-content:center}
+.dc-dot::after{content:"";width:9px;height:9px;border-radius:50%;background:#9aa8ba}
+#ar-btns{display:flex;gap:10px}
+#ar-btns .big{flex:1;min-height:56px;font-size:1.1rem}
+.dc-got{background:var(--go)} .dc-miss{background:#c3546d!important;color:#fff!important}
+.dc-grp{display:flex;flex-direction:column;gap:4px}
 .ar-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .ar-opt{min-height:64px;border:1px solid var(--frame-2);border-radius:12px;background:var(--frame);font-family:var(--f-btn);font-weight:700;font-size:1.1rem;display:flex;align-items:center;justify-content:center;gap:8px;padding:8px;text-align:center}
 .ar-opt .pc{flex:none}
@@ -345,8 +357,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
     <button class="pill" id="opt-change" aria-pressed="true">I work out the change</button>
     <button class="pill" id="btn-qt" aria-pressed="false">Quick tap</button>
     <button class="pill" id="btn-jg" aria-pressed="false">Juice bar</button>
-    <button class="pill" id="btn-jc">Juice cards</button>
-    <button class="pill" id="btn-ar" aria-pressed="false">Arcade</button>
+    <button class="pill" id="btn-ar" aria-pressed="false">Drink cards</button>
     <button class="pill" id="btn-fc">Flashcards</button>
     <button class="pill" id="btn-cheat">Cheat sheet</button>
     <button class="pill" id="btn-skip">Skip customer</button>
@@ -365,21 +376,13 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
   </div>
   <section class="ar" id="ar" hidden>
     <div class="ar-top">
-      <div class="ar-score"><span class="qt-lbl">Arcade · score</span><b id="ar-score">0</b></div>
+      <div class="ar-score"><span class="qt-lbl">Drink cards · score</span><b id="ar-score">0</b></div>
       <div class="ar-meta"><span id="ar-mult" class="ar-mult">×1</span><span class="qt-stats" id="ar-stats"></span></div>
-      <span class="qt-btns"><button class="ghost" id="ar-opt">Choose ▼</button><button class="ghost" id="ar-stop">Stop</button></span>
+      <span class="qt-btns"><button class="ghost" id="ar-opt">Choose drinks ▼</button><button class="ghost" id="ar-stop">Stop</button></span>
     </div>
-    <div class="fc-pick" id="ar-panel" hidden>
-      <h4 class="ar-h">Which-tab cards · drink categories and items</h4>
-      <div id="ar-pick"></div>
-      <h4 class="ar-h">Juice recipe cards</h4>
-      <div class="row"><button class="ghost" data-arj="all">All juices</button><button class="ghost" data-arj="none">No juices</button></div>
-      <div class="fc-chips" id="ar-juices"></div>
-    </div>
-    <div class="ar-bar"><i id="ar-bar"></i></div>
-    <div class="ar-card" id="ar-card"></div>
-    <div class="ar-opts" id="ar-opts"></div>
-    <p class="qt-fb" id="ar-fb" aria-live="polite"></p>
+    <div class="fc-pick" id="ar-panel" hidden></div>
+    <button class="dc-card" id="ar-card"></button>
+    <div class="row" id="ar-btns"></div>
   </section>
   <section class="jg" id="jg" hidden>
     <div class="jg-ticket">
@@ -1374,6 +1377,7 @@ function qtTap(name, btn){
   }
 }
 function qtStart(){
+  if(typeof DC !== 'undefined' && DC.on) arStop(); if(JG.on) jgStop();
   document.body.classList.add('quick');
   QT.on = true; $('#btn-qt').setAttribute('aria-pressed','true');
   $('#qt').hidden = false; document.querySelector('.counter').hidden = true;
@@ -1454,7 +1458,7 @@ function jgServe(){
   jgDraw(); res.scrollIntoView({block:'nearest'});
 }
 function jgStart(){
-  if(QT.on) qtStop();
+  if(QT.on) qtStop(); if(DC.on) arStop();
   JG.on = true; $('#btn-jg').setAttribute('aria-pressed','true');
   $('#jg').hidden = false; document.querySelector('.counter').hidden = true; document.querySelector('.screen').hidden = true;
   jgNext(); $('#jg').scrollIntoView({block:'start'});
@@ -1472,164 +1476,126 @@ $('#jg-chips').addEventListener('click', e => { const b = e.target.closest('[dat
   const n = b.dataset.jgpick; if(JG.pick.has(n)){ if(JG.pick.size === 1){ toast('Keep at least one juice'); return; } JG.pick.delete(n); } else JG.pick.add(n);
   jgSave(); jgDraw(); });
 
-/* ---------- juice recipe flashcards ---------- */
+/* ---------- drink cards: see the drink, remember what's in it ---------- */
 function recipeLines(r){
   const L = [];
   if(r.beet) L.push(['Big beetroot', '1 big or 2 small beetroot']);
   Object.entries(r.pieces).forEach(([k,[lo,hi,lab]]) => L.push([k, lab ? `${lab} ${k.toLowerCase()}` : lo === hi ? amtTxt(k,lo) : `${lo}–${amtTxt(k,hi)}`]));
   return L;
 }
-const JC = {back:false, flip:false, queue:[], cur:null, right:0, seen:0};
-const JC_RULES = {label:'The juice rules', rules:true};
-function jcBuild(){ JC.queue = shuffle([...JUICES, JC_RULES]); }
-function jcNext(){ if(!JC.queue.length) jcBuild(); JC.cur = JC.queue.shift(); JC.flip = false; jcDraw(); }
-function jcFace(c, side){
-  if(c.rules){
-    return side === 'q' ? `<span class="fc-hint">What are the rules?</span><b>The juice rules</b>`
-      : `<ul class="jc-list"><li>${icon('OrangeHalf',30)}<span>Orange is always <b>1.5</b></span></li><li>${icon('Pineapple',30)}<span>Pineapple is always <b>1.5</b></span></li><li>${icon('Strawberry syrup',30)}<span>Strawberry or passion fruit syrup is <b>100 ml</b></span></li><li>${icon('Watermelon',30)}<span>The last juice fills up to <b>400 ml</b></span></li><li>${icon('Apple',30)}<span>Summer Fresh: apple fills up to <b>500 ml</b></span></li></ul>`;
-  }
-  const r = c.recipe;
-  const recipe = `<ul class="jc-list">${recipeLines(r).map(([k,t]) => `<li>${icon(k === 'Orange' ? 'OrangeHalf' : k, 30)}<span>${esc(cap(t))}</span></li>`).join('')}
-    <li class="jc-fill">${icon(r.top,30)}<span>Then <b>${esc(r.top.toLowerCase())}</b> fills up to <b>${r.line} ml</b></span></li></ul>${c.guess ? '<p class="note">My guess, not your shop’s recipe yet.</p>' : ''}`;
-  const name = `<b>${esc(c.label)}</b><span class="note">Till: ${esc(c.btn)}</span>`;
-  const askName = !JC.back;
-  if(side === 'q') return askName ? `<span class="fc-hint">What goes in it?</span>${name}` : `<span class="fc-hint">Which juice is this?</span>${recipe}`;
-  return askName ? recipe : name;
+// ingredients for non-juice drinks are copied from the shop's menu (no amounts on the menu)
+const MENU_DRINKS = {
+ 'Smoothies':[
+  ['Berrylicious Smoothie','BERRYLICIOUS SMOTHIES',['Mixed berries','Banana','Yoghurt','Honey','Coconut water']],
+  ['Antioxidant Smoothie','Antioxidant Smoothie',['Açai','Mixed berries','Honey','Almond milk']],
+  ['Green Guru Smoothie','Green Guru Smoothie',['Super green mix','Super green powder','Honey','Almond milk','Banana if they want it']],
+  ['Breakfast Smoothie','Breakfast Smoothie',['Egg','Espresso','Rolled oats','Banana','Almond milk','Simple syrup']],
+  ['Protein Shake','Protein Shake',['Lite milk','Protein powder','Cocoa powder','Chia seed','Peanut butter']],
+  ['The Pump','The Pump',['Almond milk','Strawberries','Banana','Honey','Peanut butter','Spinach']],
+  ['Power Lift','POWER LIFT SMOTHIE',['Almond milk','Banana','Strawberries','Oats','Honey','Chocolate protein']]],
+ 'Frappes (icy)':[
+  ['Lychee Breeze','Lychee Breeze',['Lychee','Lime cordial','Fresh mint','Cucumber']],
+  ['Mango Tango','Mango Tango',['Mango','Strawberry','Raspberry cordial','Apple juice']],
+  ['Melon Crush','Melon Crush',['Watermelon','Strawberry','Raspberry cordial']]],
+ 'Cold coffee':[
+  ['Ice Latte','Ice Latte',['Double shot coffee','Milk','Ice']],
+  ['Ice Long Black','Ice Long Black',['Double shot coffee','Cold water','Ice']],
+  ['Cloudy Black','CLOUDY BLACK',['Double shot cold black coffee','Topped with espresso cold foam']],
+  ['Espresso Cloud','ESPRESO CLOUD',['Iced coconut water','Topped with espresso cold foam']],
+  ['Ice Coffee','Ice Coffee',['Coffee','Milk','Ice cream','Whipped cream']],
+  ['Ice Chocolate','Ice Chocolate',['Chocolate','Milk','Ice cream','Whipped cream']],
+  ['Coffee Frappe','Coffee Frappe',['Coffee','Ice cream','Milk','Ice, all blended']],
+  ['Affogato','Affogato',['Double shot espresso','Poured over vanilla ice cream']]],
+ 'Viet coffee & tea':[
+  ['Viet Hot Filtered Coffee','VIET HOT COFFEE',['Filtered coffee','With condensed milk, or black']],
+  ['Viet Ice Coffee White','VIET ICE COFFE',['Filtered coffee','Crushed ice','Condensed milk']],
+  ['Masala Chai Tea','Masala Chai Tea',['Tea leaf brewed in a pot','Served with milk and honey']],
+  ['Loose leaf teas','English Breakfast',['Brewed and served in a pot','English Breakfast, Earl Grey, Oolong, Peppermint, Chamomile']],
+  ['Fresh Hot Lemon Ginger Tea','HOT LEMON HONEY GINGER',['Fresh lemon','Ginger','With honey, in a mug']]],
+};
+const DC_ICON = {'Mixed berries':'Mixed berries', Strawberries:'Strawberry', Strawberry:'Strawberry', Mango:'Mango', Watermelon:'Watermelon', Cucumber:'Cucumber',
+  'Fresh mint':'Mint', 'Apple juice':'Apple', Spinach:'Spinach', 'Fresh lemon':'Lemon', Ginger:'Ginger'};
+const DC_CATS = ['Juices', ...Object.keys(MENU_DRINKS)];
+const DC_ALL = [
+  ...JUICES.map(j => ({cat:'Juices', label:j.label, btn:j.btn, guess:j.guess,
+    lines:[...recipeLines(j.recipe).map(([k,t]) => [k === 'Orange' ? 'OrangeHalf' : k, cap(t)]), [j.recipe.top, `Then ${j.recipe.top.toLowerCase()} fills up to ${j.recipe.line} ml`, true]]})),
+  ...Object.entries(MENU_DRINKS).flatMap(([cat, list]) => list.map(([label, btn, ing]) => ({cat, label, btn, menu:true, lines:ing.map(t => [DC_ICON[t] || null, t])})))
+];
+const DC = {on:false, pick:new Set(DC_ALL.map(d => d.label)), stats:{}, cur:null, flip:false, t0:0, tFlip:0, score:0, streak:0, n:0, right:0, best:0, again:[], last:''};
+try { const v = JSON.parse(localStorage.getItem('tt-dc-pick') || 'null'); if(Array.isArray(v) && v.length) DC.pick = new Set(v.filter(l => DC_ALL.some(d => d.label === l)));
+  DC.stats = JSON.parse(localStorage.getItem('tt-dc-stats') || '{}') || {}; DC.best = +localStorage.getItem('tt-dc-best') || 0; } catch(e){}
+const dcSave = () => { try { localStorage.setItem('tt-dc-pick', JSON.stringify([...DC.pick])); localStorage.setItem('tt-dc-stats', JSON.stringify(DC.stats)); localStorage.setItem('tt-dc-best', DC.best); } catch(e){} };
+function dcPickNext(){
+  DC.again.forEach(a => a.in--);
+  const due = DC.again.findIndex(a => a.in <= 0);
+  if(due >= 0) return DC.again.splice(due,1)[0].d;
+  let pool = DC_ALL.filter(d => DC.pick.has(d.label));
+  if(!pool.length) pool = DC_ALL.filter(d => d.cat === 'Juices');
+  const cand = pool.length > 1 ? pool.filter(d => d.label !== DC.last) : pool;
+  const ws = cand.map(d => { const x = DC.stats[d.label]; return !x ? 2.5 : Math.max(.3, 1 + 6*x.e); });
+  let r = Math.random() * ws.reduce((a,b)=>a+b,0);
+  for(let i=0;i<cand.length;i++){ if((r -= ws[i]) < 0) return cand[i]; }
+  return cand[cand.length-1];
 }
-function jcDraw(){
-  const c = JC.cur;
-  openModal(`<div class="row" style="justify-content:space-between;align-items:baseline"><h2>Juice cards</h2>
-     <div class="seg" role="group" aria-label="Card direction"><button data-jcdir="name" aria-pressed="${!JC.back}">Name → recipe</button><button data-jcdir="recipe" aria-pressed="${JC.back}">Recipe → name</button></div></div>
-   <div class="sum"><span>Got it</span><b>${JC.right} / ${JC.seen}</b><span>Left</span><b>${JC.queue.length}</b></div>
-   <button class="jc-card${JC.flip ? ' flipped' : ''}" id="jc-card" aria-label="${JC.flip ? 'Answer' : 'Tap to show the answer'}">
-     <div class="jc-q">${jcFace(c,'q')}</div>
-     ${JC.flip ? `<div class="jc-a">${jcFace(c,'a')}</div>` : '<span class="jc-tap">Say it in your head, then tap to check</span>'}
-   </button>
-   <div class="row">${JC.flip ? `<button class="big alt" id="jc-again">Missed it</button><button class="big" id="jc-got">Got it</button>` : `<button class="big" id="jc-show">Show answer</button>`}<button class="big alt" id="jc-close">Close</button></div>`);
-  const show = () => { JC.flip = true; jcDraw(); };
-  $('#jc-card').addEventListener('click', () => { if(!JC.flip) show(); });
-  $('#jc-show')?.addEventListener('click', show);
-  $('#jc-got')?.addEventListener('click', () => { JC.right++; JC.seen++; jcNext(); });
-  $('#jc-again')?.addEventListener('click', () => { JC.seen++; JC.queue.splice(Math.min(2, JC.queue.length), 0, JC.cur); jcNext(); });
-  $('#jc-close').addEventListener('click', closeModal);
-  $('#sheet').querySelectorAll('[data-jcdir]').forEach(b => b.addEventListener('click', () => { JC.back = b.dataset.jcdir === 'recipe'; JC.flip = false; jcDraw(); }));
-}
-$('#btn-jc').addEventListener('click', () => { if(!JC.cur){ jcBuild(); } if(!JC.cur) jcNext(); else jcDraw(); });
-
-/* ---------- arcade: endless mixed flashcards ---------- */
-const AR = {on:false, items:loadPick('tt-ar-items','tt-fc-tabs'), juices:new Set(JUICES.map(j => j.label)),
-  score:0, streak:0, n:0, right:0, best:0, q:null, t0:0, lock:false, again:[], last:''};
-try { const v = JSON.parse(localStorage.getItem('tt-ar-juices') || 'null'); if(Array.isArray(v)) AR.juices = new Set(v); AR.best = +localStorage.getItem('tt-ar-best') || 0; } catch(e){}
-const AR_TIME = 10; // seconds for the full speed bonus bar
-const arSave = () => { try { savePick('tt-ar-items', AR.items); localStorage.setItem('tt-ar-juices', JSON.stringify([...AR.juices])); localStorage.setItem('tt-ar-best', AR.best); } catch(e){} };
-const ingName = k => k === 'Big beetroot' ? 'Beetroot' : k;
-function arTabQ(){
-  const pool = [...AR.items].filter(n => TABS_OF[n]); const name = rnd(pool.length ? pool : namesIn(DRINK_TABS)), homes = TABS_OF[name];
-  const right = CATS.find(c => homes.has(c.id));
-  const opts = shuffle([right, ...shuffle(CATS.filter(c => !homes.has(c.id))).slice(0,3)])
-    .map(c => ({html:esc(c.label), ok:homes.has(c.id), style:`background:${c.bg};color:${c.fg}`}));
-  return {key:'tab:' + name, prompt:'Which tab is it under?', big:esc(name), opts, answer:right.label};
-}
-function arJuiceQ(){
-  const js = JUICES.filter(x => AR.juices.has(x.label)); if(!js.length) return arTabQ();
-  const j = rnd(js), r = j.recipe, L = j.label;
-  const kinds = ['top','line','name','in','in'];
-  const amtKeys = Object.keys(r.pieces).filter(k => ['Orange','Pineapple','Strawberry syrup','Passion fruit syrup'].includes(k));
-  if(amtKeys.length) kinds.push('amt','amt');
-  const kind = rnd(kinds);
-  const opt = (k, ok, label) => ({html:`${icon(k === 'Orange' ? 'OrangeHalf' : k, 30)}<span>${esc(label || ingName(k))}</span>`, ok});
-  if(kind === 'top') return {key:`j:${L}:top`, prompt:`What fills up the ${L}?`, big:'', opts:shuffle(TOPS.map(k => opt(k, k === r.top))), answer:r.top};
-  if(kind === 'line') return {key:`j:${L}:line`, prompt:`Fill the ${L} up to…`, big:'', opts:LINES.map(l => ({html:`<b>${l} ml</b>`, ok:l === r.line})), answer:r.line + ' ml'};
-  if(kind === 'name'){
-    const others = shuffle(JUICES.filter(x => x !== j)).slice(0,3);
-    const lines = recipeLines(r).map(([k,t]) => `<li>${icon(k === 'Orange' ? 'OrangeHalf' : k, 26)}<span>${esc(cap(t))}</span></li>`).join('') + `<li>${icon(r.top,26)}<span>Then ${esc(r.top.toLowerCase())} up to ${r.line} ml</span></li>`;
-    return {key:`j:${L}:name`, prompt:'Which juice is this?', big:`<ul class="jc-list ar-rec">${lines}</ul>`, opts:shuffle([j, ...others]).map(x => ({html:esc(x.label), ok:x === j})), answer:L};
-  }
-  if(kind === 'amt'){
-    const k = rnd(amtKeys), v = r.pieces[k][0], ml = JUICE_ING[k].u === 'ml';
-    const vals = ml ? [50,100,150,200] : [1,1.5,2,2.5];
-    return {key:`j:${L}:amt:${k}`, prompt:`How much ${k.toLowerCase()} goes in the ${L}?`, big:icon(k === 'Orange' ? 'OrangeHalf' : k, 64),
-      opts:vals.map(x => ({html:`<b>${x}${ml ? ' ml' : ''}</b>`, ok:x === v})), answer:`${v}${ml ? ' ml' : ''}`};
-  }
-  // which ingredient goes in
-  const inKeys = [...Object.keys(r.pieces), ...(r.beet ? ['Big beetroot'] : [])];
-  const k = rnd(inKeys);
-  const pool = Object.keys(JUICE_ING).filter(x => !inKeys.includes(x) && x !== r.top && x !== 'Small beetroot' && !(r.beet && x === 'Big beetroot'));
-  return {key:`j:${L}:in`, prompt:`Which one goes into the ${L}?`, big:'', opts:shuffle([opt(k, true), ...shuffle(pool).slice(0,3).map(x => opt(x, false))]), answer:ingName(k)};
-}
-function arNext(){
-  AR.again.forEach(a => a.in--);
-  const due = AR.again.findIndex(a => a.in <= 0);
-  let q;
-  clearTimeout(AR.timer);
-  if(due >= 0){ q = AR.again.splice(due,1)[0].q; q = {...q, opts:shuffle(q.opts)}; }
-  else {
-    const kinds = []; if(AR.items.size) kinds.push('tab'); if(AR.juices.size) kinds.push('juice');
-    if(!kinds.length){ AR.items = new Set(namesIn(DRINK_TABS)); kinds.push('tab'); }
-    for(let tries = 0; tries < 5; tries++){ q = rnd(kinds) === 'tab' ? arTabQ() : arJuiceQ(); if(q.key !== AR.last) break; }
-  }
-  AR.q = q; AR.last = q.key; AR.lock = false; AR.t0 = Date.now();
-  $('#ar-card').innerHTML = `<span class="fc-hint">${esc(q.prompt)}</span>${q.big ? `<div class="ar-big">${q.big}</div>` : ''}`;
-  $('#ar-opts').innerHTML = q.opts.map((o,i) => `<button class="ar-opt" data-ar="${i}" style="${o.style||''}">${o.html}</button>`).join('');
-  $('#ar-fb').textContent = ''; $('#ar-fb').className = 'qt-fb';
-  const bar = $('#ar-bar'); bar.style.animation = 'none'; void bar.offsetWidth; bar.style.animation = `ar-shrink ${AR_TIME}s linear forwards`;
-  arStats();
-}
-function arStats(){
-  const mult = Math.min(5, 1 + Math.floor(AR.streak/5));
-  $('#ar-score').textContent = AR.score.toLocaleString();
+function dcNext(){ DC.cur = dcPickNext(); DC.last = DC.cur.label; DC.flip = false; DC.t0 = Date.now(); dcDraw(); }
+function dcDraw(){
+  const d = DC.cur, mult = Math.min(5, 1 + Math.floor(DC.streak/5));
+  $('#ar-score').textContent = DC.score.toLocaleString();
   $('#ar-mult').textContent = '×' + mult; $('#ar-mult').classList.toggle('hot', mult > 1);
-  $('#ar-stats').innerHTML = `Streak <b>${AR.streak}</b> · Right <b>${AR.right}/${AR.n}</b> · Best <b>${AR.best.toLocaleString()}</b>`;
+  $('#ar-stats').innerHTML = `Streak <b>${DC.streak}</b> · Got <b>${DC.right}/${DC.n}</b> · Best <b>${DC.best.toLocaleString()}</b>`;
+  const list = `<ul class="jc-list dc-list">${d.lines.map(([ic, t, fill]) => `<li class="${fill ? 'jc-fill' : ''}">${ic ? icon(ic, 30) : '<i class="dc-dot"></i>'}<span>${esc(t)}</span></li>`).join('')}</ul>`;
+  $('#ar-card').className = 'dc-card' + (DC.flip ? ' flipped' : '');
+  $('#ar-card').innerHTML = `<span class="dc-cat">${esc(d.cat)}</span><b class="dc-name">${esc(d.label)}</b><span class="note">Till: ${esc(d.btn)}</span>` +
+    (DC.flip ? `<div class="dc-ans">${list}${d.menu ? '<p class="note">From the menu (no amounts listed).</p>' : ''}${d.guess ? '<p class="note">My guess, not your shop’s recipe yet.</p>' : ''}</div>`
+             : `<span class="jc-tap">What’s in it? Say it in your head, then tap to check.</span>`);
+  $('#ar-btns').innerHTML = DC.flip ? `<button class="big alt dc-miss" id="dc-miss">Missed it</button><button class="big dc-got" id="dc-got">Got it</button>` : `<button class="big" id="dc-show">Show recipe</button>`;
 }
-function arAnswer(i){
-  if(AR.lock) return; AR.lock = true;
-  const q = AR.q, o = q.opts[i], t = (Date.now() - AR.t0)/1000;
-  AR.n++;
-  const btns = [...document.querySelectorAll('#ar-opts .ar-opt')];
-  btns.forEach((b,k) => { if(q.opts[k].ok) b.classList.add('ar-right'); });
-  $('#ar-bar').style.animationPlayState = 'paused';
-  if(o.ok){
-    const mult = Math.min(5, 1 + Math.floor(AR.streak/5));
-    const pts = Math.round((100 + 100*Math.max(0, 1 - t/AR_TIME)) * mult);
-    AR.score += pts; AR.streak++; AR.right++;
-    if(AR.score > AR.best){ AR.best = AR.score; arSave(); }
-    $('#ar-fb').textContent = `+${pts}` + (t < 3 ? ' · quick!' : ''); $('#ar-fb').className = 'qt-fb good';
-    arStats(); AR.timer = setTimeout(arNext, 550);
-  } else {
-    btns[i].classList.add('ar-wrong'); AR.streak = 0;
-    AR.again.push({q, in:3});
-    $('#ar-fb').textContent = `It’s ${q.answer}. That one will come back.`; $('#ar-fb').className = 'qt-fb bad';
-    arStats(); AR.timer = setTimeout(arNext, 1600);
-  }
+function dcRecord(ok){
+  const x = DC.stats[DC.cur.label] || {n:0, e:ok ? 0 : 1}; const k = x.n ? .4 : 1;
+  x.e = x.e*(1-k) + (ok ? 0 : 1)*k; x.n++; DC.stats[DC.cur.label] = x;
 }
-function arDrawPanel(){
-  $('#ar-pick').innerHTML = `<p class="note">${esc(AR.items.size ? 'Practising: ' + pickSummary(AR.items) : 'No which-tab cards')}</p>` + pickerHTML(AR.items);
-  $('#ar-juices').innerHTML = JUICES.map(j => { const on = AR.juices.has(j.label);
-    return `<button class="fc-chip" data-arjuice="${esc(j.label)}" aria-pressed="${on}" style="${on ? 'background:#df5ad5;color:#2a0627;border-color:transparent' : ''}">${on ? '✓ ' : ''}${esc(j.label)}</button>`; }).join('');
+function dcAnswer(ok){
+  DC.n++; dcRecord(ok);
+  if(ok){ const mult = Math.min(5, 1 + Math.floor(DC.streak/5)); const secs = (DC.tFlip - DC.t0)/1000;
+    DC.score += Math.round((100 + 100*Math.max(0, 1 - secs/10)) * mult); DC.streak++; DC.right++; if(DC.score > DC.best) DC.best = DC.score; }
+  else { DC.streak = 0; DC.again.push({d:DC.cur, in:3}); }
+  dcSave(); dcNext();
+}
+function dcPanel(){
+  $('#ar-panel').innerHTML = `<div class="row"><button class="ghost" data-dcall="all">Everything</button><button class="ghost" data-dcall="none">Clear</button></div>` +
+    DC_CATS.map(cat => { const ds = DC_ALL.filter(d => d.cat === cat), k = ds.filter(d => DC.pick.has(d.label)).length;
+      return `<div class="dc-grp"><button class="pk-head ${k === ds.length ? 'all' : k ? 'some' : 'none'}" data-dccat="${esc(cat)}" style="${k ? 'background:#df5ad5;color:#2a0627;border-color:transparent' : ''}">${k === ds.length ? '✓ ' : k ? '◐ ' : ''}${esc(cat)} <span>${k}/${ds.length}</span></button>
+        <div class="pk-items">${ds.map(d => { const on = DC.pick.has(d.label), x = DC.stats[d.label];
+          return `<button class="fc-chip" data-dcpick="${esc(d.label)}" aria-pressed="${on}" style="${on ? 'background:var(--ink);color:var(--room);border-color:transparent' : ''}">${on ? '✓ ' : ''}${esc(d.label)}${x && x.n ? ` · ${Math.round((1-x.e)*100)}%` : ''}</button>`; }).join('')}</div></div>`; }).join('') +
+    `<p class="note">Tap a group to take all of it, or tap single drinks. The % is how often you’ve got it. Drinks you miss come up more.</p>`;
 }
 function arStart(){
   if(QT.on) qtStop(); if(JG.on) jgStop();
-  AR.on = true; $('#btn-ar').setAttribute('aria-pressed','true');
+  DC.on = true; $('#btn-ar').setAttribute('aria-pressed','true');
   $('#ar').hidden = false; document.querySelector('.counter').hidden = true; document.querySelector('.screen').hidden = true;
-  AR.score = 0; AR.streak = 0; AR.n = 0; AR.right = 0; AR.again = [];
-  arDrawPanel(); arNext(); $('#ar').scrollIntoView({block:'start'});
+  DC.score = 0; DC.streak = 0; DC.n = 0; DC.right = 0; DC.again = [];
+  dcNext(); $('#ar').scrollIntoView({block:'start'});
 }
 function arStop(){
-  clearTimeout(AR.timer); AR.on = false; $('#btn-ar').setAttribute('aria-pressed','false');
+  DC.on = false; $('#btn-ar').setAttribute('aria-pressed','false');
   $('#ar').hidden = true; document.querySelector('.counter').hidden = false; document.querySelector('.screen').hidden = false;
 }
-$('#btn-ar').addEventListener('click', () => AR.on ? arStop() : arStart());
+const AR = DC; // other modes check AR.on
+$('#btn-ar').addEventListener('click', () => DC.on ? arStop() : arStart());
 $('#ar-stop').addEventListener('click', arStop);
-$('#ar-opts').addEventListener('click', e => { const b = e.target.closest('[data-ar]'); if(b) arAnswer(+b.dataset.ar); });
-$('#ar-opt').addEventListener('click', e => { const p = $('#ar-panel'); p.hidden = !p.hidden; e.target.textContent = p.hidden ? 'Choose ▼' : 'Choose ▲'; if(!p.hidden) arDrawPanel(); });
+const dcFlip = () => { if(DC.flip) return; DC.flip = true; DC.tFlip = Date.now(); dcDraw(); };
+$('#ar-card').addEventListener('click', dcFlip);
+$('#ar-btns').addEventListener('click', e => { const b = e.target.closest('button'); if(!b) return;
+  if(b.id === 'dc-show') dcFlip(); else if(b.id === 'dc-got') dcAnswer(true); else if(b.id === 'dc-miss') dcAnswer(false); });
+$('#ar-opt').addEventListener('click', e => { const p = $('#ar-panel'); p.hidden = !p.hidden; e.target.textContent = p.hidden ? 'Choose drinks ▼' : 'Choose drinks ▲'; if(!p.hidden) dcPanel(); });
 $('#ar-panel').addEventListener('click', e => {
   const b = e.target.closest('button'); if(!b) return;
-  if(b.dataset.arj){ AR.juices = b.dataset.arj === 'all' ? new Set(JUICES.map(j => j.label)) : new Set(); }
-  else if(b.dataset.arjuice){ const n = b.dataset.arjuice; AR.juices.has(n) ? AR.juices.delete(n) : AR.juices.add(n); }
-  else { const r = pickerClick(e, AR.items); if(!r) return; }
-  if(!AR.items.size && !AR.juices.size) toast('Pick something to practise');
-  arSave(); arDrawPanel();
-  if(AR.items.size || AR.juices.size){ AR.again = []; arNext(); }
+  if(b.dataset.dcall){ DC.pick = b.dataset.dcall === 'all' ? new Set(DC_ALL.map(d => d.label)) : new Set(); }
+  else if(b.dataset.dccat){ const ds = DC_ALL.filter(d => d.cat === b.dataset.dccat); const all = ds.every(d => DC.pick.has(d.label)); ds.forEach(d => all ? DC.pick.delete(d.label) : DC.pick.add(d.label)); }
+  else if(b.dataset.dcpick){ const n = b.dataset.dcpick; DC.pick.has(n) ? DC.pick.delete(n) : DC.pick.add(n); }
+  else return;
+  dcSave(); dcPanel();
+  if(DC.pick.size){ DC.again = []; dcNext(); } else toast('Pick some drinks to practise');
 });
 
 /* ---------- events ---------- */
