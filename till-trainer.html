@@ -91,7 +91,15 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .ing{display:flex;align-items:center;gap:7px;background:#0f1622;border:1px solid var(--frame-2);border-radius:8px;padding:8px;text-align:left;font-size:.88rem;min-width:0}
 .ing:active{transform:scale(.97)}
 .ing i{width:14px;height:14px;border-radius:50%;flex:none}
-.ing span{flex:1;min-width:0;overflow-wrap:anywhere;line-height:1.15}
+.ing .pc,.topb .pc{flex:none}
+.jtray{background:#0f1622;border-radius:10px;padding:6px 8px;margin-bottom:10px;display:flex;flex-direction:column;gap:2px}
+.jtray-lbl{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.jtray-pcs{display:flex;flex-wrap:wrap;gap:0;min-height:36px;align-items:center}
+.jtray-pcs .tp{display:inline-flex}
+.jtray-pcs .tp.new{animation:drop .25s ease-out}
+@keyframes drop{from{transform:translateY(-10px);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.jtray-pcs .tp.new{animation:none}}
+.ing span{flex:1;min-width:0;overflow-wrap:break-word;line-height:1.15}
 .ing b{font-family:var(--f-num);font-size:.8rem;color:var(--muted)}
 .ing.has{border-color:var(--gold)}
 .ing.has b{color:var(--gold)}
@@ -145,7 +153,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .fc-chip{border:1px solid var(--frame-2);background:var(--frame);border-radius:6px;padding:6px 9px;font-family:var(--f-btn);font-weight:700;font-size:.88rem;letter-spacing:.02em}
 .fc-fb .good{color:var(--good)} .fc-fb .bad{color:var(--bad)}
 @media (prefers-reduced-motion:reduce){.fc-card{transition:none}}
-@media (max-width:480px){.juicer{grid-template-columns:72px minmax(0,1fr);gap:10px}.glass{width:70px;height:230px}.ing{padding:7px 6px;gap:5px;font-size:.8rem}.ing i{width:10px;height:10px}.mlread{font-size:.8rem}}
+@media (max-width:480px){.ing .pc{width:24px;height:24px}.ing{font-size:.78rem!important}.ing b{font-size:.72rem}.juicer{grid-template-columns:64px minmax(0,1fr);gap:8px}.glass{width:62px;height:230px}.ing{padding:7px 6px;gap:5px;font-size:.8rem}.ing i{width:10px;height:10px}.mlread{font-size:.8rem}}
 @media (prefers-reduced-motion:reduce){.jfill,.jlayers div{transition:none}}
 
 /* Australian cash */
@@ -547,6 +555,7 @@ const FOODS = [
 const JUICE_ING = {
  Orange:{c:'#f59a23',step:.5,u:''}, Pineapple:{c:'#f5d33b',step:.5,u:''}, Apple:{c:'#c9d86a',step:1,u:''}, Watermelon:{c:'#f2546a',step:1,u:'wedge'},
  Carrot:{c:'#f07a1e',step:1,u:''}, 'Big beetroot':{c:'#8e1d4a',step:1,u:''}, 'Small beetroot':{c:'#b0457a',step:1,u:''},
+ Strawberry:{c:'#e2334d',step:1,u:'scoop'}, 'Mixed berries':{c:'#5b2a6e',step:1,u:'scoop'}, Mango:{c:'#f7a823',step:1,u:'scoop'},
  'Strawberry syrup':{c:'#e2334d',step:50,u:'ml'}, 'Passion fruit syrup':{c:'#c98a1a',step:50,u:'ml'},
  Mint:{c:'#4fc28a',step:1,u:'sprig'}, Lemon:{c:'#f7ec6a',step:1,u:'bit'}, Ginger:{c:'#e8c98a',step:1,u:'bit'}, Turmeric:{c:'#e8a10c',step:1,u:'bit'},
  Celery:{c:'#9bc96a',step:1,u:'stick'}, Cucumber:{c:'#b5dc96',step:.5,u:''}, Kale:{c:'#2f7d3a',step:1,u:'handful'}, Spinach:{c:'#3d8f3f',step:1,u:'handful'},
@@ -911,15 +920,43 @@ function updateJuiceCard(i){
   const f = $('#jfill-'+i); if(f) f.innerHTML = glassLayers(j);
   const t = $('#jml-'+i); if(t) t.textContent = j.top && j.line ? `${j.line} ml · ${j.top.toLowerCase()}` : j.taps.length ? `${j.taps.length} in, not topped up` : 'Not made yet';
 }
+/* drawn ingredient pieces (40×40) */
+const cube = (x,y,a,b,c) => `<g transform="translate(${x} ${y})"><path d="M0 4 L4 0 H13 V9 L9 13 H0Z" fill="${c}"/><path d="M0 4 L4 0 H13 L9 4Z" fill="${b}"/><rect x="0" y="4" width="9" height="9" fill="${a}"/></g>`;
+const seeds = pts => pts.map(([x,y]) => `<ellipse cx="${x}" cy="${y}" rx=".7" ry="1" fill="#ffe08a"/>`).join('');
+const ICON = {
+ Orange:`<circle cx="20" cy="22" r="13" fill="#f28c12"/><circle cx="20" cy="22" r="13" fill="none" stroke="#d9740a" stroke-width="1"/><circle cx="15" cy="17" r="4" fill="#ffc46b" opacity=".6"/><g fill="#d9740a"><circle cx="24" cy="26" r=".8"/><circle cx="27" cy="20" r=".8"/><circle cx="18" cy="29" r=".8"/><circle cx="13" cy="24" r=".8"/></g><rect x="19" y="7" width="2" height="4" rx="1" fill="#6b4a2a"/><path d="M21 9 Q27 4 31 8 Q26 11 21 9Z" fill="#4c9a3a"/>`,
+ OrangeHalf:`<path d="M6 22 A14 14 0 0 0 34 22Z" fill="#f28c12"/><path d="M8.5 22 A11.5 11.5 0 0 0 31.5 22Z" fill="#ffb347"/><g stroke="#fff3d6" stroke-width="1"><path d="M20 22 V33"/><path d="M20 22 L12 30"/><path d="M20 22 L28 30"/><path d="M20 22 L9.5 25"/><path d="M20 22 L30.5 25"/></g><rect x="6" y="20.5" width="28" height="2" rx="1" fill="#e07b0c"/>`,
+ Pineapple:`<g transform="rotate(-28 20 20)"><rect x="5" y="15" width="30" height="10" rx="2" fill="#f7d43c"/><rect x="5" y="15" width="30" height="3" rx="1.5" fill="#ffe680"/><g stroke="#e0b51f" stroke-width=".9"><path d="M9 18 V25"/><path d="M14 18 V25"/><path d="M19 18 V25"/><path d="M24 18 V25"/><path d="M29 18 V25"/></g><rect x="5" y="23" width="30" height="2" rx="1" fill="#e9be2a"/></g>`,
+ Watermelon:`<g transform="rotate(-28 20 20)"><rect x="4" y="13" width="32" height="10" rx="1.5" fill="#f2546a"/><rect x="4" y="13" width="32" height="2.5" fill="#ff7d8f"/><rect x="4" y="23" width="32" height="2.5" fill="#e3f4c8"/><rect x="4" y="25.5" width="32" height="2.5" rx="1" fill="#3f8f3a"/><g fill="#2a1a1a"><ellipse cx="10" cy="18" rx=".9" ry="1.4"/><ellipse cx="17" cy="20" rx=".9" ry="1.4"/><ellipse cx="24" cy="17.5" rx=".9" ry="1.4"/><ellipse cx="31" cy="19.5" rx=".9" ry="1.4"/></g></g>`,
+ Strawberry:cube(5,19,'#d42a43','#f26b80','#a81d33') + cube(20,14,'#d42a43','#f26b80','#a81d33') + cube(14,24,'#e13a52','#f57a8d','#b02238') + seeds([[9,27],[24,22],[18,32],[13,25]]),
+ 'Mixed berries':`<g fill="#7a1d3d"><circle cx="13" cy="25" r="2.6"/><circle cx="16" cy="22.5" r="2.6"/><circle cx="17" cy="27" r="2.6"/><circle cx="12.5" cy="29.5" r="2.6"/></g><g fill="#3b4aa6"><circle cx="25" cy="27" r="5"/><circle cx="29" cy="18" r="4.5"/></g><circle cx="25" cy="25" r="1" fill="#1f2a66"/><circle cx="29" cy="16.5" r="1" fill="#1f2a66"/><g fill="#d63a5e"><circle cx="20" cy="13" r="2.4"/><circle cx="23" cy="13.5" r="2.4"/><circle cx="21.5" cy="16" r="2.4"/><circle cx="18.5" cy="16" r="2.4"/></g>`,
+ Mango:cube(5,19,'#f6a21d','#ffcd55','#d9850c') + cube(20,14,'#f6a21d','#ffcd55','#d9850c') + cube(14,24,'#f9ad2a','#ffd76b','#dd8a10'),
+ Apple:`<path d="M20 12 C10 8 5 16 7 24 C9 33 15 36 20 33 C25 36 31 33 33 24 C35 16 30 8 20 12Z" fill="#a9cd4a"/><path d="M12 15 C9 18 9 22 10 24" stroke="#d8ef8f" stroke-width="2.4" fill="none" stroke-linecap="round"/><path d="M20 12 V6" stroke="#6b4a2a" stroke-width="2" stroke-linecap="round"/><path d="M21 8 Q27 3 31 6 Q26 10 21 8Z" fill="#4c9a3a"/>`,
+ Carrot:`<path d="M9 33 L30 13 Q34 12 33 17 Z" fill="#f07a1e"/><g stroke="#c95e0d" stroke-width="1" stroke-linecap="round"><path d="M17 26 L20 27"/><path d="M22 21 L25 22"/><path d="M26 17 L29 18"/></g><g stroke="#3f8f3a" stroke-width="2.2" stroke-linecap="round" fill="none"><path d="M31 14 L36 6"/><path d="M32 15 L38 11"/><path d="M30 13 L31 5"/></g>`,
+ 'Big beetroot':`<path d="M20 9 C9 9 6 20 9 27 C12 34 28 34 31 27 C34 20 31 9 20 9Z" fill="#8e1d4a"/><path d="M20 33 Q21 37 18 39" stroke="#6d1236" stroke-width="1.5" fill="none"/><ellipse cx="14" cy="18" rx="3" ry="4" fill="#b8406f" opacity=".6"/><g stroke-width="2" stroke-linecap="round" fill="none"><path d="M19 9 L15 2" stroke="#b02a5c"/><path d="M21 9 L25 2" stroke="#b02a5c"/></g><path d="M14 3 Q9 0 10 5Z" fill="#3f8f3a"/><path d="M26 3 Q31 0 30 5Z" fill="#3f8f3a"/>`,
+ 'Small beetroot':`<path d="M20 15 C13 15 11 22 13 26 C15 31 25 31 27 26 C29 22 27 15 20 15Z" fill="#a52a5c"/><path d="M20 30 Q21 34 18 36" stroke="#6d1236" stroke-width="1.3" fill="none"/><ellipse cx="16.5" cy="21" rx="2" ry="2.6" fill="#c9578a" opacity=".6"/><g stroke-width="1.8" stroke-linecap="round" fill="none"><path d="M19 15 L16 9" stroke="#b02a5c"/><path d="M21 15 L24 9" stroke="#b02a5c"/></g><path d="M15.5 10 Q11 7 12 12Z" fill="#3f8f3a"/>`,
+ Lemon:`<path d="M5 24 A15 15 0 0 0 35 24Z" fill="#f2d22e"/><path d="M7.5 24 A12.5 12.5 0 0 0 32.5 24Z" fill="#fbef8a"/><g stroke="#fffbe0" stroke-width="1"><path d="M20 24 V36"/><path d="M20 24 L11 33"/><path d="M20 24 L29 33"/><path d="M20 24 L8.5 28"/><path d="M20 24 L31.5 28"/></g><rect x="5" y="22.5" width="30" height="2" rx="1" fill="#e6c018"/>`,
+ Ginger:`<g fill="#e3c08a" stroke="#b38b55" stroke-width="1"><ellipse cx="14" cy="24" rx="8" ry="5" transform="rotate(-15 14 24)"/><ellipse cx="25" cy="22" rx="7" ry="4.5" transform="rotate(20 25 22)"/><ellipse cx="20" cy="15" rx="3.5" ry="5" transform="rotate(10 20 15)"/><ellipse cx="31" cy="15" rx="3" ry="4.5" transform="rotate(30 31 15)"/></g><g stroke="#b38b55" stroke-width=".8"><path d="M10 22 l1 4"/><path d="M24 20 l-1 4"/></g>`,
+ Turmeric:`<g fill="#c9782a" stroke="#93511a" stroke-width="1"><rect x="7" y="20" width="18" height="6" rx="3" transform="rotate(-12 16 23)"/><rect x="18" y="15" width="14" height="5.5" rx="2.75" transform="rotate(25 25 18)"/></g><ellipse cx="7.8" cy="25" rx="2.6" ry="3" fill="#f5a20f" stroke="#93511a" stroke-width="1"/><g stroke="#93511a" stroke-width=".8"><path d="M13 21 l.6 4"/><path d="M18 20 l.6 4"/></g>`,
+ Celery:`<g transform="rotate(-30 20 20)"><rect x="3" y="17" width="27" height="7" rx="3" fill="#9bc96a"/><g stroke="#76a64a" stroke-width="1"><path d="M5 19.5 H29"/><path d="M5 22 H29"/></g><g fill="#5fa63f"><circle cx="32" cy="17" r="3.5"/><circle cx="35" cy="21" r="3"/><circle cx="31" cy="23" r="3"/></g></g>`,
+ Cucumber:`<g transform="rotate(-28 20 20)"><rect x="4" y="14" width="30" height="11" rx="5.5" fill="#3c8a3a"/><g fill="#2b6b2a"><circle cx="11" cy="17" r=".8"/><circle cx="19" cy="22" r=".8"/><circle cx="26" cy="17" r=".8"/></g><ellipse cx="33" cy="19.5" rx="3" ry="5.5" fill="#d6efb0"/><ellipse cx="33" cy="19.5" rx="1.4" ry="3" fill="#b9de87"/></g>`,
+ Kale:`<path d="M20 35 C10 32 6 24 8 16 C9 13 12 14 11 11 C13 7 16 10 17 7 C19 4 21 7 23 5 C26 6 25 9 28 9 C31 11 29 13 32 15 C34 22 30 31 20 35Z" fill="#2f7d3a"/><path d="M20 35 C20 25 19 15 21 7" stroke="#9cc97a" stroke-width="1.6" fill="none"/><g stroke="#9cc97a" stroke-width=".9" fill="none"><path d="M20 26 L13 20"/><path d="M20 22 L27 16"/><path d="M20 18 L15 13"/></g>`,
+ Spinach:`<path d="M20 34 C9 30 7 18 13 11 C17 7 25 7 28 12 C33 20 29 30 20 34Z" fill="#3d8f3f"/><path d="M20 34 C19 26 19 18 22 10" stroke="#a6d28a" stroke-width="1.4" fill="none"/><path d="M20 34 L20 39" stroke="#6aa84f" stroke-width="2" stroke-linecap="round"/>`,
+ Mint:`<path d="M20 30 C12 28 10 20 14 15 C18 17 21 23 20 30Z" fill="#4fc28a"/><path d="M20 30 C28 28 30 20 26 15 C22 17 19 23 20 30Z" fill="#3fae78"/><path d="M20 24 C16 21 16 13 20 8 C24 13 24 21 20 24Z" fill="#5fd39a"/><path d="M20 36 V9" stroke="#2f8a5a" stroke-width="1.2"/>`,
+ 'Strawberry syrup':`<rect x="17" y="3" width="6" height="4" rx="1" fill="#333"/><rect x="17.5" y="7" width="5" height="5" fill="#e2334d"/><path d="M12 15 Q12 12 17.5 12 H22.5 Q28 12 28 15 V35 Q28 37 26 37 H14 Q12 37 12 35Z" fill="#e2334d"/><rect x="13.5" y="19" width="13" height="11" rx="1.5" fill="#fff4f4"/><path d="M20 21.5 C17 21.5 16.5 25 20 28 C23.5 25 23 21.5 20 21.5Z" fill="#e2334d"/><rect x="14" y="15" width="3" height="19" rx="1.5" fill="#fff" opacity=".25"/>`,
+ 'Passion fruit syrup':`<rect x="17" y="3" width="6" height="4" rx="1" fill="#333"/><rect x="17.5" y="7" width="5" height="5" fill="#e8a317"/><path d="M12 15 Q12 12 17.5 12 H22.5 Q28 12 28 15 V35 Q28 37 26 37 H14 Q12 37 12 35Z" fill="#e8a317"/><rect x="13.5" y="19" width="13" height="11" rx="1.5" fill="#fff8e6"/><circle cx="20" cy="24.5" r="4" fill="#6b2a6e"/><circle cx="20" cy="24.5" r="2.7" fill="#f6c437"/><g fill="#2a1a10"><circle cx="19" cy="24" r=".6"/><circle cx="21" cy="25" r=".6"/><circle cx="20" cy="23" r=".5"/></g><rect x="14" y="15" width="3" height="19" rx="1.5" fill="#fff" opacity=".25"/>`,
+};
+const icon = (k, sz=26) => `<svg class="pc" viewBox="0 0 40 40" width="${sz}" height="${sz}" aria-hidden="true">${ICON[k] || `<circle cx="20" cy="20" r="12" fill="${(JUICE_ING[k]||{}).c||'#999'}"/>`}</svg>`;
+const pieceIcon = (k, sz) => icon(k === 'Orange' ? 'OrangeHalf' : k, sz);
 function mountJuicer(root, j, onChange){
   const keys = Object.keys(JUICE_ING);
-  root.innerHTML = `<div class="juicer">
+  root.innerHTML = `<div class="jtray"><span class="jtray-lbl">In the juicer</span><div class="jtray-pcs"></div></div><div class="juicer">
      <div><div class="glass"><div class="jlayers"></div>${LINES.map(l => `<div class="jmark" style="bottom:${l/CAP*100}%"><span>${l}</span></div>`).join('')}</div><div class="mlread"></div></div>
      <div class="jsteps">
        <h4>1 · Into the juicer <span>tap to add</span></h4>
-       <div class="ings">${keys.map((k,n) => `<button class="ing" data-ing="${esc(k)}"><i style="background:${JUICE_ING[k].c}"></i><span>${esc(k)}</span><b data-ct="${n}"></b></button>`).join('')}</div>
+       <div class="ings">${keys.map((k,n) => `<button class="ing" data-ing="${esc(k)}">${icon(k, 30)}<span>${esc(k)}</span><b data-ct="${n}"></b></button>`).join('')}</div>
        <h4>2 · Last, fill up with</h4>
-       <div class="tops">${TOPS.map(k => `<button class="topb" data-top="${k}"><i style="background:${JUICE_ING[k].c}"></i>${k}</button>`).join('')}</div>
+       <div class="tops">${TOPS.map(k => `<button class="topb" data-top="${k}">${icon(k, 24)}${k}</button>`).join('')}</div>
        <h4>3 · Up to the line</h4>
        <div class="tops">${LINES.map(l => `<button class="topb" data-line="${l}">${l} ml</button>`).join('')}</div>
        <div class="row"><button class="ghost" data-jact="undo">Undo</button><button class="ghost" data-jact="empty">Empty</button></div>
@@ -928,6 +965,7 @@ function mountJuicer(root, j, onChange){
   const draw = () => {
     const m = countsOf(j);
     root.querySelector('.jlayers').innerHTML = glassLayers(j);
+    root.querySelector('.jtray-pcs').innerHTML = j.taps.length ? j.taps.map((k,i) => `<span class="tp${i === j.taps.length-1 ? ' new' : ''}" title="${esc(k)}">${pieceIcon(k, 34)}</span>`).join('') : '<span class="note">Nothing yet. Tap the fruit below.</span>';
     root.querySelector('.mlread').innerHTML = j.top && j.line ? `<b>${j.line}</b> ml` : `<span class="note">${j.taps.length} in</span>`;
     keys.forEach((k,n) => { const b = root.querySelector(`[data-ct="${n}"]`); b.textContent = m[k] ? (JUICE_ING[k].u === 'ml' ? m[k] + 'ml' : m[k]) : ''; b.parentElement.classList.toggle('has', !!m[k]); });
     root.querySelectorAll('[data-top]').forEach(b => b.setAttribute('aria-pressed', b.dataset.top === j.top));
@@ -936,7 +974,7 @@ function mountJuicer(root, j, onChange){
   };
   root.onclick = e => {
     const b = e.target.closest('button'); if(!b || !root.contains(b)) return;
-    if(b.dataset.ing){ if(j.taps.length >= 20){ toast('That’s a lot in there. Undo or Empty it.'); return; } j.taps.push(b.dataset.ing); }
+    if(b.dataset.ing){ if(j.taps.length >= 30){ toast('That’s a lot in there. Undo or Empty it.'); return; } j.taps.push(b.dataset.ing); }
     else if(b.dataset.top){ j.top = j.top === b.dataset.top ? null : b.dataset.top; }
     else if(b.dataset.line){ j.line = j.line === +b.dataset.line ? null : +b.dataset.line; }
     else if(b.dataset.jact === 'undo'){ j.taps.pop(); }
