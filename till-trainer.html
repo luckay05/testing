@@ -113,6 +113,16 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .fc-tabs .fc-right{outline:3px solid var(--good);outline-offset:-3px}
 .fc-tabs .fc-wrong{outline:3px solid var(--bad);outline-offset:-3px;opacity:.6}
 .fc-fb{min-height:1.5em}
+.jc-card{display:flex;flex-direction:column;gap:10px;align-items:stretch;text-align:left;background:var(--paper);color:var(--paper-ink);border:0;border-radius:14px;padding:16px;min-height:200px;width:100%}
+.jc-q{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.jc-q > b,.jc-a > b{font-family:var(--f-btn);font-size:2rem;line-height:1.05;font-weight:700;text-align:center}
+.jc-a{display:flex;flex-direction:column;align-items:center;gap:4px;border-top:2px dashed #c9d3df;padding-top:10px}
+.jc-card .note{color:#5b6b80}
+.jc-tap{margin-top:auto;text-align:center;font-size:.85rem;color:#5b6b80}
+.jc-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;width:100%}
+.jc-list li{display:flex;align-items:center;gap:10px;font-size:1.02rem}
+.jc-list .pc{flex:none}
+.jc-fill{border-top:1px solid #d5dde8;padding-top:6px}
 .qt{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;background:var(--frame);border:1px solid var(--frame-2);border-radius:14px;padding:10px 14px;display:flex;flex-direction:column;gap:6px;box-shadow:0 8px 20px rgba(0,0,0,.45)}
 .qt-top{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:6px 8px}
 .qt-lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:600;grid-column:1/-1}
@@ -312,6 +322,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
     <button class="pill" id="opt-change" aria-pressed="true">I work out the change</button>
     <button class="pill" id="btn-qt" aria-pressed="false">Quick tap</button>
     <button class="pill" id="btn-jg" aria-pressed="false">Juice bar</button>
+    <button class="pill" id="btn-jc">Juice cards</button>
     <button class="pill" id="btn-fc">Flashcards</button>
     <button class="pill" id="btn-cheat">Cheat sheet</button>
     <button class="pill" id="btn-skip">Skip customer</button>
@@ -1418,6 +1429,50 @@ $('#jg-opts').addEventListener('click', e => { const p = $('#jg-optpanel'); p.hi
 $('#jg-chips').addEventListener('click', e => { const b = e.target.closest('[data-jgpick]'); if(!b) return;
   const n = b.dataset.jgpick; if(JG.pick.has(n)){ if(JG.pick.size === 1){ toast('Keep at least one juice'); return; } JG.pick.delete(n); } else JG.pick.add(n);
   jgSave(); jgDraw(); });
+
+/* ---------- juice recipe flashcards ---------- */
+function recipeLines(r){
+  const L = [];
+  if(r.beet) L.push(['Big beetroot', '1 big or 2 small beetroot']);
+  Object.entries(r.pieces).forEach(([k,[lo,hi,lab]]) => L.push([k, lab ? `${lab} ${k.toLowerCase()}` : lo === hi ? amtTxt(k,lo) : `${lo}–${amtTxt(k,hi)}`]));
+  return L;
+}
+const JC = {back:false, flip:false, queue:[], cur:null, right:0, seen:0};
+const JC_RULES = {label:'The juice rules', rules:true};
+function jcBuild(){ JC.queue = shuffle([...JUICES, JC_RULES]); }
+function jcNext(){ if(!JC.queue.length) jcBuild(); JC.cur = JC.queue.shift(); JC.flip = false; jcDraw(); }
+function jcFace(c, side){
+  if(c.rules){
+    return side === 'q' ? `<span class="fc-hint">What are the rules?</span><b>The juice rules</b>`
+      : `<ul class="jc-list"><li>${icon('OrangeHalf',30)}<span>Orange is always <b>1.5</b></span></li><li>${icon('Pineapple',30)}<span>Pineapple is always <b>1.5</b></span></li><li>${icon('Strawberry syrup',30)}<span>Strawberry or passion fruit syrup is <b>100 ml</b></span></li><li>${icon('Watermelon',30)}<span>The last juice fills up to <b>400 ml</b></span></li><li>${icon('Apple',30)}<span>Summer Fresh: apple fills up to <b>500 ml</b></span></li></ul>`;
+  }
+  const r = c.recipe;
+  const recipe = `<ul class="jc-list">${recipeLines(r).map(([k,t]) => `<li>${icon(k === 'Orange' ? 'OrangeHalf' : k, 30)}<span>${esc(cap(t))}</span></li>`).join('')}
+    <li class="jc-fill">${icon(r.top,30)}<span>Then <b>${esc(r.top.toLowerCase())}</b> fills up to <b>${r.line} ml</b></span></li></ul>${c.guess ? '<p class="note">My guess, not your shop’s recipe yet.</p>' : ''}`;
+  const name = `<b>${esc(c.label)}</b><span class="note">Till: ${esc(c.btn)}</span>`;
+  const askName = !JC.back;
+  if(side === 'q') return askName ? `<span class="fc-hint">What goes in it?</span>${name}` : `<span class="fc-hint">Which juice is this?</span>${recipe}`;
+  return askName ? recipe : name;
+}
+function jcDraw(){
+  const c = JC.cur;
+  openModal(`<div class="row" style="justify-content:space-between;align-items:baseline"><h2>Juice cards</h2>
+     <div class="seg" role="group" aria-label="Card direction"><button data-jcdir="name" aria-pressed="${!JC.back}">Name → recipe</button><button data-jcdir="recipe" aria-pressed="${JC.back}">Recipe → name</button></div></div>
+   <div class="sum"><span>Got it</span><b>${JC.right} / ${JC.seen}</b><span>Left</span><b>${JC.queue.length}</b></div>
+   <button class="jc-card${JC.flip ? ' flipped' : ''}" id="jc-card" aria-label="${JC.flip ? 'Answer' : 'Tap to show the answer'}">
+     <div class="jc-q">${jcFace(c,'q')}</div>
+     ${JC.flip ? `<div class="jc-a">${jcFace(c,'a')}</div>` : '<span class="jc-tap">Say it in your head, then tap to check</span>'}
+   </button>
+   <div class="row">${JC.flip ? `<button class="big alt" id="jc-again">Missed it</button><button class="big" id="jc-got">Got it</button>` : `<button class="big" id="jc-show">Show answer</button>`}<button class="big alt" id="jc-close">Close</button></div>`);
+  const show = () => { JC.flip = true; jcDraw(); };
+  $('#jc-card').addEventListener('click', () => { if(!JC.flip) show(); });
+  $('#jc-show')?.addEventListener('click', show);
+  $('#jc-got')?.addEventListener('click', () => { JC.right++; JC.seen++; jcNext(); });
+  $('#jc-again')?.addEventListener('click', () => { JC.seen++; JC.queue.splice(Math.min(2, JC.queue.length), 0, JC.cur); jcNext(); });
+  $('#jc-close').addEventListener('click', closeModal);
+  $('#sheet').querySelectorAll('[data-jcdir]').forEach(b => b.addEventListener('click', () => { JC.back = b.dataset.jcdir === 'recipe'; JC.flip = false; jcDraw(); }));
+}
+$('#btn-jc').addEventListener('click', () => { if(!JC.cur){ jcBuild(); } if(!JC.cur) jcNext(); else jcDraw(); });
 
 /* ---------- events ---------- */
 document.addEventListener('click', e => {
