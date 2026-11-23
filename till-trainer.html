@@ -613,8 +613,8 @@ const JUICE_ING = {
  Carrot:{c:'#f07a1e',step:1,u:''}, 'Big beetroot':{c:'#8e1d4a',step:1,u:''}, 'Small beetroot':{c:'#b0457a',step:1,u:''},
  Strawberry:{c:'#e2334d',step:1,u:'scoop'}, 'Mixed berries':{c:'#5b2a6e',step:1,u:'scoop'}, Mango:{c:'#f7a823',step:1,u:'scoop'},
  'Strawberry syrup':{c:'#e2334d',step:50,u:'ml'}, 'Passion fruit syrup':{c:'#c98a1a',step:50,u:'ml'},
- Mint:{c:'#4fc28a',step:1,u:'sprig'}, Lemon:{c:'#f7ec6a',step:1,u:'bit'}, Ginger:{c:'#e8c98a',step:1,u:'bit'}, Turmeric:{c:'#e8a10c',step:1,u:'bit'},
- Celery:{c:'#9bc96a',step:1,u:'stick'}, Cucumber:{c:'#b5dc96',step:.5,u:''}, Kale:{c:'#2f7d3a',step:1,u:'handful'}, Spinach:{c:'#3d8f3f',step:1,u:'handful'},
+ Mint:{c:'#4fc28a',step:1,u:'sprig'}, Lemon:{c:'#f7ec6a',step:1,u:'cube'}, Ginger:{c:'#e8c98a',step:1,u:'cube'}, Turmeric:{c:'#e8a10c',step:1,u:'bit'},
+ Celery:{c:'#9bc96a',step:1,u:'stick'}, Cucumber:{c:'#b5dc96',step:.5,u:''}, Kale:{c:'#2f7d3a',step:1,u:''}, Spinach:{c:'#3d8f3f',step:1,u:'handful'},
 };
 const TOPS = ['Apple','Watermelon','Orange','Pineapple'];
 const LINES = [400,450,500];
@@ -624,7 +624,7 @@ const JUICES = [
  {label:'Passion', say:'a Passion juice', btn:'PASSION', recipe:{pieces:{Orange:[1.5,1.5], 'Passion fruit syrup':[100,100], Mint:[1,3,'some']}, top:'Watermelon', line:400}},
  {label:'Beauty Boost', say:'a Beauty Boost', btn:'BEAUTY BOOST', recipe:{pieces:{Turmeric:[1,2,'a bit of'], Ginger:[1,2,'a bit of'], Lemon:[1,2,'a bit of'], Carrot:[1,1]}, top:'Orange', line:400}},
  {label:'Energies Power Juice', say:'an Energies Power Juice', btn:'POWER J', recipe:{beet:true, pieces:{Carrot:[1,1], Lemon:[1,2,'a bit of'], Ginger:[1,2,'a bit of']}, top:'Orange', line:400}},
- {label:'Super Green', say:'a Super Green', btn:'SUPER GREEN', guess:true, recipe:{pieces:{Celery:[2,2], Cucumber:[.5,.5], Kale:[1,1,'a handful of'], Lemon:[1,2,'a bit of'], Ginger:[1,2,'a bit of']}, top:'Apple', line:400}},
+ {label:'Super Green', say:'a Super Green', btn:'SUPER GREEN', recipe:{pieces:{Celery:[3,3], Kale:[3,3], Apple:[1,1], Ginger:[1,1], Cucumber:[1,1], Lemon:[1,1]}, top:null, line:null}},
 ];
 const MYO = ['Apple','Orange','Pineapple','Carrot','Watermelon','Kale','Spinach','Celery','Beetroot','Ginger','Lemon','Mint','Passion Fruit'];
 const shuffle = a => { a = a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
@@ -647,7 +647,7 @@ function recipeStr(r){
   const parts = [];
   if(r.beet) parts.push('1 big or 2 small beetroot');
   Object.entries(r.pieces).forEach(([k,[lo,hi,lab]]) => parts.push(lab ? `${lab} ${k.toLowerCase()}` : lo === hi ? amtTxt(k,lo) : `${lo}–${amtTxt(k,hi)}`));
-  parts.push(`then ${r.top.toLowerCase()} fills up to ${r.line} ml`);
+  parts.push(r.top ? `then ${r.top.toLowerCase()} fills up to ${r.line} ml` : 'no fill-up, just the pieces');
   return parts.join(' · ');
 }
 function makeMyo(){
@@ -983,7 +983,7 @@ function glassLayers(j){
 function updateJuiceCard(i){
   const j = S.juices[i];
   const f = $('#jfill-'+i); if(f) f.innerHTML = glassLayers(j);
-  const t = $('#jml-'+i); if(t) t.textContent = j.top && j.line ? `${j.line} ml · ${j.top.toLowerCase()}` : j.taps.length ? `${j.taps.length} in, not topped up` : 'Not made yet';
+  const t = $('#jml-'+i); if(t) t.textContent = j.top && j.line ? `${j.line} ml · ${j.top.toLowerCase()}` : j.taps.length ? `${j.taps.length} pieces in` : 'Not made yet';
 }
 /* drawn ingredient pieces (40×40) */
 const cube = (x,y,a,b,c) => `<g transform="translate(${x} ${y})"><path d="M0 4 L4 0 H13 V9 L9 13 H0Z" fill="${c}"/><path d="M0 4 L4 0 H13 L9 4Z" fill="${b}"/><rect x="0" y="4" width="9" height="9" fill="${a}"/></g>`;
@@ -1089,6 +1089,7 @@ function gradeJuice(j){
     else if(g < lo || g > hi) probs.push(`${amtTxt(k,g)}, should be ${lo === hi ? lo : lo + '–' + hi}`);
     delete cnt[k]; });
   Object.keys(cnt).forEach(k => probs.push(k === r.top ? `${k.toLowerCase()} is only the top-up here, no pieces` : `no ${k.toLowerCase()} in this one`));
+  if(!r.top){ if(j.top || j.line) probs.push('no fill-up for this one, just the pieces'); return {ok: !probs.length, probs}; }
   if(j.top !== r.top) probs.push(j.top ? `topped up with ${j.top.toLowerCase()}, should be ${r.top.toLowerCase()}` : `not topped up (use ${r.top.toLowerCase()})`);
   const want = r.line;
   if(j.line !== want) probs.push(j.line ? `filled to ${j.line} ml, should be ${want} ml` : `fill to the ${want} ml line`);
@@ -1527,7 +1528,7 @@ const dcIcon = t => (DC_ICONS.find(([re]) => re.test(t)) || [])[1] || null;
 const DC_CATS = ['Juices', ...Object.keys(MENU_DRINKS)];
 const DC_ALL = [
   ...JUICES.map(j => ({cat:'Juices', label:j.label, btn:j.btn, guess:j.guess,
-    lines:[...recipeLines(j.recipe).map(([k,t]) => [k === 'Orange' ? 'OrangeHalf' : k, cap(t)]), [j.recipe.top, `Then ${j.recipe.top.toLowerCase()} fills up to ${j.recipe.line} ml`, true]]})),
+    lines:[...recipeLines(j.recipe).map(([k,t]) => [k === 'Orange' ? 'OrangeHalf' : k, cap(t)]), j.recipe.top ? [j.recipe.top, `Then ${j.recipe.top.toLowerCase()} fills up to ${j.recipe.line} ml`, true] : [null, 'No fill-up, just the pieces', true]]})),
   ...Object.entries(MENU_DRINKS).flatMap(([cat, list]) => list.map(([label, btn, ing, src]) => ({cat, label, btn, src, lines:ing.map(t => [dcIcon(t), t, /^fill|^blend/i.test(t)])})))
 ];
 const DC = {on:false, pick:new Set(DC_ALL.map(d => d.label)), stats:{}, cur:null, flip:false, t0:0, tFlip:0, score:0, streak:0, n:0, right:0, best:0, again:[], last:''};
